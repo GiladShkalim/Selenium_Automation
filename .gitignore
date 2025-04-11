@@ -1,0 +1,228 @@
+# OS specific files
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+## Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+## Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Editor/IDE specific files
+## VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+## JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+out/
+
+## Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+
+## Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+## Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+
+# Build and dependency files
+## General
+build/
+dist/
+out/
+bin/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.class
+*.jar
+
+## Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+## Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.envrc
+
+## Cache and temp files
+.cache/
+.tmp/
+temp/
+tmp/
+
+# Language specific patterns
+## Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+ENV/
+env/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+## Node.js / JavaScript
+node_modules/
+jspm_packages/
+bower_components/
+.npm/
+.pnp/
+.pnp.js
+package-lock.json
+yarn.lock
+web_modules/
+
+## Java
+target/
+.gradle/
+.maven/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+## Ruby
+*.gem
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/spec/examples.txt
+/test/tmp/
+/test/version_tmp/
+/tmp/
+.rspec
+/.bundle/
+/vendor/bundle
+/lib/bundler/man/
+
+## Go
+/vendor/
+/Godeps/
+.glide/
+.golang-ci.yml
+*.test
+/bin
+/dist
+
+# Other common ignores
+## Database
+*.sqlite
+*.sqlite3
+*.db
+
+## Compiled source
+*.com
+*.dll
+*.exe
+*.o
+*.so
+
+## Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+## Certificates and secrets
+*.pem
+*.cert
+*.key
+*.p12
+*.pfx
+*.crt
+
+## Test coverage
+.coverage
+.coverage.*
+coverage/
+*.cover
+.hypothesis/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.nyc_output
+
+## Dependencies and lockfiles (uncomment based on your preferences)
+# package-lock.json
+# yarn.lock
+# Pipfile.lock
+# poetry.lock
+# Gemfile.lock
