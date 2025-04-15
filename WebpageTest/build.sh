@@ -27,6 +27,7 @@ SERVER_PID=""
 PORT=8000
 VENV_DIR=".venv"
 PROJECT_DIR="mysite"
+ENV_FILE=".env"
 
 # Cleanup function
 cleanup() {
@@ -54,7 +55,7 @@ cleanup() {
     fi
     
     # Check if port is still in use
-    if netstat -tuln | grep ":$PORT " > /dev/null 2>&1; then
+    if check_port_in_use $PORT; then
         log "Warning: Port $PORT is still in use. Attempting to free it..."
         # Find process using the port and kill it
         pid=$(lsof -t -i:$PORT 2>/dev/null || true)
@@ -83,18 +84,286 @@ is_in_virtualenv() {
     fi
 }
 
+# MongoDB configuration setup
+setup_mongodb_config() {
+    log "Setting up MongoDB configuration..."
+    
+    # Create .env file if it doesn't exist
+    if [ ! -f "$ENV_FILE" ]; then
+        log "Creating environment configuration file..."
+        cat > "$ENV_FILE" << EOF
+# MongoDB Configuration
+MONGODB_URI=mongodb+srv://giladshkalim:Gilad1212@intellidb.yuauj7i.mongodb.net/IntelliDB?retryWrites=true&w=majority&appName=IntelliDB
+MONGODB_NAME=IntelliDB
+
+# Django Settings
+SECRET_KEY=your-secret-key-here
+DEBUG=True
+EOF
+        log "Created environment template at $ENV_FILE"
+        log "⚠️  IMPORTANT: Please edit $ENV_FILE with your actual MongoDB credentials"
+    else
+        log "Environment file $ENV_FILE already exists"
+    fi
+    
+    # Load environment variables
+    log "Loading configuration from $ENV_FILE"
+    if [ -f "$ENV_FILE" ]; then
+        # Export environment variables properly
+        export $(grep -v '^#' "$ENV_FILE" | xargs) || log "Warning: Failed to export environment variables"
+    else
+        log "⚠️  $ENV_FILE file not found. MongoDB connection may fail."
+    fi
+}
+
+# Test MongoDB connection
+test_mongodb_connection() {
+    log "Testing MongoDB connection..."
+    
+    # Check if MongoDB URI is set
+    if [ -z "$MONGODB_URI" ]; then
+        log "⚠️  MongoDB URI not set. Skipping connection test."
+        return 1
+    fi
+    
+    # Simple test script
+    python3 -c "
+from pymongo import MongoClient
+import os
+import sys
+
+try:
+    uri = os.environ.get('MONGODB_URI')
+    if not uri:
+        print('MongoDB URI not found in environment variables')
+        sys.exit(1)
+    
+    client = MongoClient(uri)
+    info = client.server_info()
+    print(f'Successfully connected to MongoDB v{info.get(\"version\")}')
+    sys.exit(0)
+except Exception as e:
+    print(f'MongoDB connection error: {e}')
+    sys.exit(1)
+" && return 0 || return 1
+}
+
+# Create necessary MongoDB files
+create_mongodb_files() {
+    log "Creating MongoDB utility files..."
+    
+    # Create directories if they don't exist
+    mkdir -p "$PROJECT_DIR/intellishop/utils"
+    mkdir -p "$PROJECT_DIR/intellishop/models"
+    mkdir -p "$PROJECT_DIR/intellishop/management/commands"
+    
+    # Create mongodb_utils.py
+    local MONGODB_UTILS_FILE="$PROJECT_DIR/intellishop/utils/mongodb_utils.py"
+    if [ ! -f "$MONGODB_UTILS_FILE" ]; then
+        log "Creating MongoDB utility file..."
+        cat > "$MONGODB_UTILS_FILE" << 'EOF'
+from pymongo import MongoClient
+import os
+
+def get_db_handle():
+    """
+    Returns a handle to the MongoDB database and client
+    """
+    # Get MongoDB connection details from environment variables or settings
+    mongodb_uri = os.environ.get('MONGODB_URI', 'mongodb://localhost:27017/')
+    db_name = os.environ.get('MONGODB_NAME', 'intellishop_db')
+    
+    # Create a MongoDB client
+    client = MongoClient(mongodb_uri)
+    db_handle = client[db_name]
+    
+    return db_handle, client
+
+def get_collection_handle(collection_name):
+    """
+    Returns a handle to a specific MongoDB collection
+    """
+    db, client = get_db_handle()
+    return db[collection_name]
+EOF
+        log "Created MongoDB utility file at $MONGODB_UTILS_FILE"
+    else
+        log "MongoDB utility file already exists"
+    fi
+    
+    # Create __init__.py files to make directories into packages
+    touch "$PROJECT_DIR/intellishop/utils/__init__.py"
+    touch "$PROJECT_DIR/intellishop/models/__init__.py"
+    
+    # Create mongodb_models.py
+    local MONGODB_MODELS_FILE="$PROJECT_DIR/intellishop/models/mongodb_models.py"
+    if [ ! -f "$MONGODB_MODELS_FILE" ]; then
+        log "Creating MongoDB models file..."
+        cat > "$MONGODB_MODELS_FILE" << 'EOF'
+from bson import ObjectId
+
+class MongoDBModel:
+    """Base class for MongoDB models"""
+    collection_name = None
+    
+    @classmethod
+    def get_collection(cls):
+        """Get the MongoDB collection for this model"""
+        from intellishop.utils.mongodb_utils import get_collection_handle
+        return get_collection_handle(cls.collection_name)
+    
+    @classmethod
+    def find_one(cls, query):
+        """Find a single document"""
+        return cls.get_collection().find_one(query)
+    
+    @classmethod
+    def find(cls, query=None, sort=None, limit=None):
+        """Find multiple documents"""
+        cursor = cls.get_collection().find(query or {})
+        
+        if sort:
+            cursor = cursor.sort(sort)
+        
+        if limit:
+            cursor = cursor.limit(limit)
+        
+        return list(cursor)
+    
+    @classmethod
+    def insert_one(cls, document):
+        """Insert a document into the collection"""
+        result = cls.get_collection().insert_one(document)
+        return result.inserted_id
+    
+    @classmethod
+    def update_one(cls, query, update):
+        """Update a document in the collection"""
+        return cls.get_collection().update_one(query, {'$set': update})
+    
+    @classmethod
+    def delete_one(cls, query):
+        """Delete a document from the collection"""
+        return cls.get_collection().delete_one(query)
+
+# Example model for product data
+class Product(MongoDBModel):
+    collection_name = 'products'
+    
+    @classmethod
+    def create_product(cls, name, description, price, category, image_url=None):
+        """Create a new product"""
+        product_data = {
+            'name': name,
+            'description': description,
+            'price': price,
+            'category': category,
+            'image_url': image_url
+        }
+        return cls.insert_one(product_data)
+    
+    @classmethod
+    def get_by_category(cls, category):
+        """Get products by category"""
+        return cls.find({'category': category})
+    
+    @classmethod
+    def get_by_id(cls, product_id):
+        """Get a product by its ID"""
+        return cls.find_one({'_id': ObjectId(product_id)})
+EOF
+        log "Created MongoDB models file at $MONGODB_MODELS_FILE"
+    else
+        log "MongoDB models file already exists"
+    fi
+    
+    # Create test command
+    mkdir -p "$PROJECT_DIR/intellishop/management/commands"
+    touch "$PROJECT_DIR/intellishop/management/__init__.py"
+    touch "$PROJECT_DIR/intellishop/management/commands/__init__.py"
+    
+    local TEST_COMMAND_FILE="$PROJECT_DIR/intellishop/management/commands/test_mongodb.py"
+    if [ ! -f "$TEST_COMMAND_FILE" ]; then
+        log "Creating MongoDB test command..."
+        cat > "$TEST_COMMAND_FILE" << 'EOF'
+from django.core.management.base import BaseCommand
+from intellishop.utils.mongodb_utils import get_db_handle
+
+class Command(BaseCommand):
+    help = 'Test MongoDB connection'
+
+    def handle(self, *args, **options):
+        try:
+            db, client = get_db_handle()
+            server_info = client.server_info()
+            self.stdout.write(self.style.SUCCESS(f'Successfully connected to MongoDB version: {server_info["version"]}'))
+            self.stdout.write(self.style.SUCCESS(f'Available databases: {client.list_database_names()}'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Failed to connect to MongoDB: {e}'))
+        finally:
+            if 'client' in locals():
+                client.close()
+EOF
+        log "Created MongoDB test command at $TEST_COMMAND_FILE"
+    else
+        log "MongoDB test command already exists"
+    fi
+}
+
 # Set up trap for cleanup on script exit
 trap cleanup EXIT INT TERM
+
+echo "Checking Python version..."
+
+# Check if Python 3 is installed
+if command -v python3 &>/dev/null; then
+    PYTHON_VERSION=$(python3 --version)
+    echo "✅ Python 3 detected: $PYTHON_VERSION"
+else
+    echo "❌ Python 3 not detected. Installing Python 3..."
+    
+    # Detect OS and install Python
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        echo "Detected macOS. Using Homebrew to install Python 3..."
+        if command -v brew &>/dev/null; then
+            brew install python3
+        else
+            echo "Homebrew not installed. Installing Homebrew first..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            brew install python3
+        fi
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        echo "Detected Linux. Installing Python 3..."
+        if command -v apt-get &>/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y python3 python3-pip python3-venv
+        elif command -v yum &>/dev/null; then
+            sudo yum install -y python3 python3-pip
+        else
+            echo "ERROR: Unsupported package manager. Please install Python 3 manually."
+            exit 1
+        fi
+    else
+        echo "ERROR: Unsupported operating system. Please install Python 3 manually."
+        exit 1
+    fi
+    
+    # Verify Python was installed
+    if command -v python3 &>/dev/null; then
+        PYTHON_VERSION=$(python3 --version)
+        echo "✅ Python 3 installed successfully: $PYTHON_VERSION"
+    else
+        echo "❌ Failed to install Python 3. Please install manually."
+        exit 1
+    fi
+fi
 
 log "Starting IntelliShop setup"
 
 # Configuration
 REQUIREMENTS_FILE="requirements.txt"
-
-# Check if Python is available
-if ! command -v python3 &> /dev/null; then
-    error "Python3 is not installed or not in PATH"
-fi
 
 # If we're already in a virtual environment but not our target one, warn and deactivate
 if is_in_virtualenv && [[ "$VIRTUAL_ENV" != *"$VENV_DIR"* ]]; then
@@ -143,7 +412,17 @@ else
     else
         log "Django already installed in virtual environment"
     fi
+    
+    # Install MongoDB dependencies
+    log "Installing PyMongo and dnspython"
+    python -m pip install pymongo dnspython || log "Warning: Failed to install MongoDB dependencies"
 fi
+
+# Set up MongoDB configuration
+setup_mongodb_config
+
+# Create MongoDB utility files
+create_mongodb_files
 
 # Change to the Django project directory
 if [ ! -d "$PROJECT_DIR" ]; then
@@ -152,8 +431,11 @@ fi
 
 cd $PROJECT_DIR || error "Failed to change to project directory"
 
+# Test MongoDB connection
+test_mongodb_connection || log "Warning: MongoDB connection test failed. The application may not function correctly."
+
 # Check if port is already in use
-if netstat -tuln | grep ":$PORT " > /dev/null 2>&1; then
+if check_port_in_use $PORT; then
     log "Warning: Port $PORT is already in use"
     pid=$(lsof -t -i:$PORT 2>/dev/null || true)
     if [ -n "$pid" ]; then
@@ -195,3 +477,24 @@ log "Server running with PID: $SERVER_PID"
 wait $SERVER_PID 2>/dev/null || true
 
 # The cleanup function will be called automatically through the trap 
+
+# Add this function near the top of the script
+check_port_in_use() {
+    local port=$1
+    
+    # Try different commands based on what's available
+    if command -v netstat &>/dev/null; then
+        netstat -tuln | grep ":$port " > /dev/null 2>&1
+        return $?
+    elif command -v ss &>/dev/null; then
+        ss -tuln | grep ":$port " > /dev/null 2>&1
+        return $?
+    elif command -v lsof &>/dev/null; then
+        lsof -i :$port > /dev/null 2>&1
+        return $?
+    else
+        # If no tool is available, we can't check - assume it's not in use
+        log "Warning: Cannot check if port is in use (netstat, ss, and lsof not found)"
+        return 1
+    fi
+} 
