@@ -12,3 +12,6 @@ def login_view(request):
 
 def register(request):
     return render(request, 'intellishop/register.html') 
+
+def template(request):
+    return render(request, 'intellishop/Site_template.html') 

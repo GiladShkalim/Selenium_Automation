@@ -1,0 +1,109 @@
+{% extends 'intellishop/index_home_original.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Registration Form Section -->
+<section class="py-5" style="background-color: #f8f9fa;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-7">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h2 class="text-center mb-4">Register</h2>
+                        <form>
+                            <div class="mb-3 row">
+                                <label for="username" class="col-sm-3 col-form-label">Username:</label>
+                                <div class="col-sm-9">
+                                    <input type="text" class="form-control" id="username" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 row">
+                                <label for="password" class="col-sm-3 col-form-label">Password:</label>
+                                <div class="col-sm-9">
+                                    <input type="password" class="form-control" id="password" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 row">
+                                <label for="email" class="col-sm-3 col-form-label">Email:</label>
+                                <div class="col-sm-9">
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 row">
+                                <label for="type" class="col-sm-3 col-form-label">Status:</label>
+                                <div class="col-sm-9">
+                                    <select class="form-select" id="type" required>
+                                        <option value="">Select type</option>
+                                        <option value="newyork">New York</option>
+                                        <option value="sydney">Sydney</option>
+                                        <option value="london">London</option>
+                                        <option value="mumbai">Mumbai</option>
+                                        <option value="toronto">Toronto</option>
+                                        <option value="dubai">Dubai</option>
+                                        <option value="hongkong">Hong Kong</option>
+                                        <option value="shanghai">Shanghai</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 row">
+                                <label for="age" class="col-sm-3 col-form-label">Age:</label>
+                                <div class="col-sm-9">
+                                    <input type="number" class="form-control" id="age" min="18" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 row">
+                                <label for="location" class="col-sm-3 col-form-label">Location:</label>
+                                <div class="col-sm-9">
+                                    <select class="form-select" id="location" required>
+                                        <option value="">Select location</option>
+                                        <option value="newyork">New York</option>
+                                        <option value="sydney">Sydney</option>
+                                        <option value="london">London</option>
+                                        <option value="mumbai">Mumbai</option>
+                                        <option value="toronto">Toronto</option>
+                                        <option value="dubai">Dubai</option>
+                                        <option value="hongkong">Hong Kong</option>
+                                        <option value="shanghai">Shanghai</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 row">
+                                <label for="hobbies" class="col-sm-3 col-form-label">Hobbies:</label>
+                                <div class="col-sm-9">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <input type="checkbox" class="btn-check" id="hobby-amazon" autocomplete="off">
+                                        <label class="btn btn-sm btn-outline-secondary rounded-pill" for="hobby-amazon">Lifestyle & Personal Needs</label>
+                                        
+                                        <input type="checkbox" class="btn-check" id="hobby-airbnb" autocomplete="off">
+                                        <label class="btn btn-sm btn-outline-secondary rounded-pill" for="hobby-airbnb">Home & Garden</label>
+                                        
+                                        <input type="checkbox" class="btn-check" id="hobby-uber" autocomplete="off">
+                                        <label class="btn btn-sm btn-outline-secondary rounded-pill" for="hobby-uber">Electronics</label>
+                                        
+                                        <input type="checkbox" class="btn-check" id="hobby-netflix" autocomplete="off">
+                                        <label class="btn btn-sm btn-outline-secondary rounded-pill" for="hobby-netflix">Books & Entertainment</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-danger">REGISTER</button>
+                            </div>
+                            
+                            <div class="text-center mt-3">
+                                <span>Already have an account? <a href="{% url 'login' %}" id="signin-link">SIGN IN</a></span>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

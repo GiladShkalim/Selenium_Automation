@@ -1,0 +1,47 @@
+{% extends 'intellishop/index_home_original.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Login Form Section -->
+<section class="py-5" style="background-color: #f8f9fa;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h2 class="text-center mb-4">Login</h2>
+                        <form>
+                            <div class="mb-3">
+                                <label for="login-email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="login-email" placeholder="Enter your email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="login-password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="login-password" placeholder="Enter your password" required>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input type="checkbox" class="form-check-input" id="remember-me">
+                                <label class="form-check-label" for="remember-me">Remember me?</label>
+                            </div>
+                            <button type="submit" class="btn btn-danger w-100">LOGIN</button>
+                        </form>
+                        <div class="text-center mt-3">
+                            <a href="#forgot-password" class="text-decoration-none">Forgot Password?</a>
+                        </div>
+                        <div class="text-center mt-3">
+                            <span>OR</span>
+                        </div>
+                        <div class="text-center mt-2">
+                            <button class="btn btn-light"><i class="bi bi-google"></i></button>
+                            <button class="btn btn-light"><i class="bi bi-linkedin"></i></button>
+                        </div>
+                        <div class="text-center mt-3">
+                            <span>Need an account? <a href="{% url 'register' %}" id="signup-link">SIGN UP</a></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
