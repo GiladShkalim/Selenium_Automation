@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 import os
 import logging
+import certifi
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,13 @@ def get_db_handle():
             logger.warning("MongoDB URI not properly configured. Using local fallback.")
             mongodb_uri = 'mongodb+srv://giladshkalim:Gilad123@intellidb.yuauj7i.mongodb.net/IntelliDB?retryWrites=true&w=majority'
             
-        # Create a MongoDB client
-        client = MongoClient(mongodb_uri)
+        # Updated client creation with SSL configuration
+        client = MongoClient(
+            mongodb_uri,
+            ssl=True,
+            ssl_ca_certs=certifi.where()
+        )
+        
         db_handle = client[db_name]
         
         # Test connection

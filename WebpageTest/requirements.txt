@@ -6,6 +6,8 @@ sqlparse==0.5.3
 # Database
 pymongo==4.6.1
 dnspython==2.6.0
+pymongo[srv]
+certifi
 
 # Environment and configuration
 python-dotenv==1.0.0
