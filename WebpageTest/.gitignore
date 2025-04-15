@@ -1,9 +1,11 @@
-# Python
+# Python bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Distribution / packaging
 build/
 develop-eggs/
 dist/
@@ -26,39 +28,22 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media/
+staticfiles/
 
 # Virtual Environment
 .venv/
 venv/
 ENV/
 env/
+env.bak/
+venv.bak/
 
-# If you're using Jupyter Notebook
-.ipynb_checkpoints
-
-# IDE specific files
-.idea/
-.vscode/
-*.swp
-*.swo
-.DS_Store
-
-# Coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-
-# Translations
-*.mo
-*.pot
-
-# Backup files
-*.bak
+# Environment variables - never commit these
+.env
+.env.*
+.mongodb.env
+*.env
+!.env.example
 
 # Unit test / coverage reports
 htmlcov/
@@ -75,18 +60,54 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Django static files - uncomment if needed
-# static/
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+*.sublime-workspace
+*.sublime-project
 
-# Django collected static files
-staticfiles/
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# local environment files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# MongoDB specific
+*.wt
+*.lock
+*.turtle
+*.bson
+mongod.lock
+WiredTiger*
 
-# pycache in migrations
-**/migrations/__pycache__/
+# Logs
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*~
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Generated documentation
+docs/_build/
+docs/api/
+
+# Django migrations - sometimes ignored in development
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# Keep .env.example as a template
+!.env.example

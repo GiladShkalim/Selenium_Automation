@@ -10,8 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,10 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ajdg3zm300%^pmfn*vf-#m7g2ljc(w@$t$!33d&=+uo^gh*_e='
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-ajdg3zm300%^pmfn*vf-#m7g2ljc(w@$t$!33d&=+uo^gh*_e=')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # Update the ALLOWED_HOSTS with the values we need
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '*']
@@ -78,7 +82,7 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': ':memory:',  # Use in-memory database instead of file
     }
 }
 
@@ -135,3 +139,35 @@ STATICFILES_FINDERS = [
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# MongoDB Settings
+# Get MongoDB connection details from environment variables
+MONGODB_URI = os.environ.get(
+    'MONGODB_URI', 
+    'mongodb+srv://giladshkalim:<db_password>@intellidb.yuauj7i.mongodb.net/IntelliDB?retryWrites=true&w=majority&appName=IntelliDB'
+)
+MONGODB_NAME = os.environ.get('MONGODB_NAME', 'IntelliDB')
+
+# IMPORTANT: Django still requires a relational database for its built-in features
+# We'll use an in-memory SQLite database as a minimal solution for Django's internal use
+# This won't store any application data, which will all go to MongoDB
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',  # Use in-memory database instead of file
+    }
+}
+
+# Optional: If you want to completely disable migrations (advanced)
+# This can speed up tests but might break some Django functionality
+# MIGRATION_MODULES = {app: None for app in INSTALLED_APPS}
+
+# Instructions for users in comments
+"""
+To connect to MongoDB Atlas:
+1. Create a .env file in the project root (where manage.py is)
+2. Add these lines to the .env file:
+   MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-address>/<database>?retryWrites=true&w=majority
+   MONGODB_NAME=<database>
+3. Replace the placeholders with your actual MongoDB credentials
+"""
