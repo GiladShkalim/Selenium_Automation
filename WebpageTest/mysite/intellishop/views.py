@@ -1,9 +1,9 @@
 # View functions that handle HTTP requests and return responses
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.contrib.auth.models import User
-from .models.mongodb_models import Product
+from .models.mongodb_models import Product, User
 import json
+from pymongo.errors import DuplicateKeyError
 
 def index(request):
     return render(request, 'intellishop/index.html')
@@ -15,25 +15,55 @@ def login_view(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            user = User.objects.get(email=data['email'], password=data['password'])
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Login successful',
-                'redirect': '/dashboard/'
+            user = User.find_one({
+                'email': data['email'], 
+                'password': data['password']
             })
-        except User.DoesNotExist:
+            
+            if user is not None:
+                # In production, use Django session framework properly
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Login successful',
+                    'redirect': '/dashboard/',
+                    'user_id': str(user['_id'])
+                })
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid credentials'
+                }, status=400)
+                
+        except Exception as e:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Invalid credentials'
+                'message': str(e)
             }, status=400)
+            
     return render(request, 'intellishop/login.html')
 
 def register(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            # Create new user
-            user = User.objects.create(
+            
+            # Check if user already exists - with explicit None check
+            existing_user = User.get_by_username(data['username'])
+            if existing_user is not None:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Username already exists'
+                }, status=400)
+            
+            existing_email = User.get_by_email(data['email'])
+            if existing_email is not None:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Email already exists'
+                }, status=400)
+            
+            # Create new user in MongoDB
+            user_id = User.create_user(
                 username=data['username'],
                 password=data['password'],  # In production, hash the password
                 email=data['email'],
@@ -42,15 +72,36 @@ def register(request):
                 location=data['location'],
                 hobbies=data['hobbies']
             )
-            return JsonResponse({'status': 'success', 'message': 'User registered successfully'})
+            
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'User registered successfully',
+                'user_id': str(user_id)
+            })
+            
+        except DuplicateKeyError:
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'Username or email already exists'
+            }, status=400)
+            
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            return JsonResponse({
+                'status': 'error', 
+                'message': str(e)
+            }, status=400)
     
     return render(request, 'intellishop/register.html')
 
 def dashboard(request):
-    # Get all users from the database
-    users = User.objects.all()
+    # Get all users from MongoDB
+    users = User.find()
+    
+    # Convert MongoDB ObjectId to string for template
+    for user in users:
+        if user is not None and '_id' in user:
+            user['_id'] = str(user['_id'])
+    
     return render(request, 'intellishop/dashboard.html', {'users': users})
 
 def template(request):
