@@ -109,8 +109,20 @@ EOF
     # Load environment variables
     log "Loading configuration from $ENV_FILE"
     if [ -f "$ENV_FILE" ]; then
-        # Export environment variables properly
-        export $(grep -v '^#' "$ENV_FILE" | xargs) || log "Warning: Failed to export environment variables"
+        # Export environment variables properly - only export valid variable assignments
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Skip comments and empty lines
+            if [[ $line =~ ^[[:space:]]*# || -z $line ]]; then
+                continue
+            fi
+            
+            # Only export if line contains a valid KEY=VALUE format (no spaces around =)
+            if [[ $line =~ ^[A-Za-z0-9_]+=.* ]]; then
+                export "$line" || log "Warning: Failed to export environment variable: $line"
+            else
+                log "Warning: Skipping invalid environment variable: $line"
+            fi
+        done < "$ENV_FILE"
     else
         log "⚠️  $ENV_FILE file not found. MongoDB connection may fail."
     fi
