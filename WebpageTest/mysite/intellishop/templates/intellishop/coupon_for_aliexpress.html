@@ -1,0 +1,178 @@
+{% extends 'intellishop/index_home_original.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Coupon Page Header -->
+<div class="container-fluid bg-light py-3">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-2">קופונים לאליאקספרס - כל המבצעים והקופונים ל-AliExpress</h1>
+                <p class="text-center mb-0">[מעודכן 2025]</p>
+                <p class="text-center">AliExpress אחד הקניות המקוון עבור מוצרי אלקטרוניקה, אופנה, אביזרי סלולר, אלקטרוניקה למחשבים, צעצועים ועוד. עם למעלה מ- 70,000 סוחרים וייצרנים.</p>
+                <p class="text-center">ריכזנו עבורכם את כל הקופונים הזמינים לאלי אקספרס.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Coupon Cards Section -->
+<div class="container my-4">
+    <!-- Single Coupon Card -->
+    <div class="card mb-3">
+        <div class="row g-0">
+            <div class="col-md-2">
+                <img src="{% static 'images/aliexpress-logo.png' %}" class="img-fluid rounded-start" alt="AliExpress Logo">
+            </div>
+            <div class="col-md-8">
+                <div class="card-body">
+                    <h5 class="card-title">קופון אליאקספרס AliExpress [עדכני 2025]</h5>
+                    <p class="card-text text-warning">48₪ הנחה</p>
+                    <p class="card-text"><small class="text-muted">שימוש אחרון: 16/04/2025</small></p>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center gap-2">
+                <!-- Like Button -->
+                <button class="btn btn-light btn-sm like-button" onclick="toggleLike(this)">
+                    <i class="bi bi-heart"></i>
+                </button>
+                
+                <!-- Share Button -->
+                <button class="btn btn-light btn-sm" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-share"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="shareOnWhatsApp()"><i class="bi bi-whatsapp me-2"></i>WhatsApp</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="shareOnFacebook()"><i class="bi bi-facebook me-2"></i>Facebook</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="shareOnTwitter()"><i class="bi bi-twitter me-2"></i>Twitter</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="shareOnYoutube()"><i class="bi bi-youtube me-2"></i>YouTube</a></li>
+                </ul>
+                
+                <!-- Acquire Button (previously "קבלו קוד") -->
+                <button class="btn btn-primary">Acquire</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repeat for other coupons -->
+    <div class="card mb-3">
+        <div class="row g-0">
+            <div class="col-md-2">
+                <img src="{% static 'images/aliexpress-logo.png' %}" class="img-fluid rounded-start" alt="AliExpress Logo">
+            </div>
+            <div class="col-md-8">
+                <div class="card-body">
+                    <h5 class="card-title">קופון אליאקספרס AliExpress [עדכני 2025]</h5>
+                    <p class="card-text text-warning">14.96₪ הנחה</p>
+                    <p class="card-text"><small class="text-muted">שימוש אחרון: 16/04/2025</small></p>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center gap-2">
+                <!-- Like Button -->
+                <button class="btn btn-light btn-sm like-button" onclick="toggleLike(this)">
+                    <i class="bi bi-heart"></i>
+                </button>
+                
+                <!-- Share Button -->
+                <button class="btn btn-light btn-sm" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-share"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="shareOnWhatsApp()"><i class="bi bi-whatsapp me-2"></i>WhatsApp</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="shareOnFacebook()"><i class="bi bi-facebook me-2"></i>Facebook</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="shareOnTwitter()"><i class="bi bi-twitter me-2"></i>Twitter</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="shareOnYoutube()"><i class="bi bi-youtube me-2"></i>YouTube</a></li>
+                </ul>
+                
+                <!-- Acquire Button (previously "קבלו קוד") -->
+                <button class="btn btn-primary">Acquire</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Instructions Section -->
+<div class="container my-4">
+    <h2 class="text-center mb-4">כיצד להשתמש בקוד קופון אליאקספרס</h2>
+    <ol class="list-group list-group-numbered">
+        <li class="list-group-item">לחצו על "קבלו קוד" כדי לפתוח את אתר Aliexpress.</li>
+        <li class="list-group-item">בצעו חיפוש של המוצר שאותו תרצו לרכוש.</li>
+        <li class="list-group-item">לאחר שמצאתם את המוצר, לחצו על הכנסה.</li>
+        <li class="list-group-item">הזינו את הפרטים שלכם והצצו על 'הבא: פרטים סופיים'.</li>
+        <li class="list-group-item">הזינו את פרטי הקשר שלכם והדביקו את קוד הקופון במקום המיועד כדי להפעיל את ההנחה.</li>
+    </ol>
+</div>
+
+<!-- Share Section -->
+<div class="container text-center my-4">
+    <p class="mb-2">שתפו את הקופון עם חברים:</p>
+    <div class="btn-group" role="group">
+        <button class="btn btn-dark"><i class="bi bi-twitter"></i></button>
+        <button class="btn btn-danger"><i class="bi bi-youtube"></i></button>
+        <button class="btn btn-primary"><i class="bi bi-facebook"></i></button>
+        <button class="btn btn-success"><i class="bi bi-whatsapp"></i></button>
+    </div>
+</div>
+
+<style>
+    /* RTL Support */
+    body {
+        direction: rtl;
+        text-align: right;
+    }
+    
+    /* Card Styling */
+    .card {
+        transition: transform 0.2s;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    /* Button Styling */
+    .btn-primary {
+        background-color: #0d47a1;
+        border: none;
+    }
+    
+    .btn-primary:hover {
+        background-color: #002171;
+    }
+    
+    .like-button {
+        transition: all 0.3s ease;
+    }
+    
+    .like-button.active {
+        color: red;
+    }
+    
+    .like-button.active i {
+        fill: red;
+    }
+    
+    .btn-light {
+        border: 1px solid #dee2e6;
+    }
+</style>
+
+<script>
+function toggleLike(button) {
+    button.classList.toggle('active');
+    const icon = button.querySelector('i');
+    if (button.classList.contains('active')) {
+        icon.classList.remove('bi-heart');
+        icon.classList.add('bi-heart-fill');
+    } else {
+        icon.classList.remove('bi-heart-fill');
+        icon.classList.add('bi-heart');
+    }
+}
+</script>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-top border-bottom">
+    <!-- Add your navigation content here -->
+</nav>
+{% endblock %}

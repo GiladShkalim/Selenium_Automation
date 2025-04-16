@@ -133,4 +133,7 @@ def product_detail(request, product_id):
     # Convert ObjectId to string for JSON serialization
     product['_id'] = str(product['_id'])
     
-    return JsonResponse({'product': product}) 
+    return JsonResponse({'product': product})
+
+def aliexpress_coupons(request):
+    return render(request, 'intellishop/coupon_for_aliexpress.html') 
