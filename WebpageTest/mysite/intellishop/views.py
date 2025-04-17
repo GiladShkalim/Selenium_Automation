@@ -136,4 +136,20 @@ def product_detail(request, product_id):
     return JsonResponse({'product': product})
 
 def aliexpress_coupons(request):
-    return render(request, 'intellishop/coupon_for_aliexpress.html') 
+    return render(request, 'intellishop/coupon_for_aliexpress.html')
+
+def coupon_detail(request, coupon_code):
+        # You can store coupon details in a database or dictionary
+
+    coupons = {
+        'ILMAR12': {
+            'code': 'ILMAR12',
+            'discount': '7.48₪',
+            'total': '56.11₪',
+            'expiry': '16/04/2025'
+        },
+                # Add more coupons here
+
+    }
+    coupon = coupons.get(coupon_code)
+    return render(request, 'intellishop/coupon_detail.html', {'coupon': coupon})

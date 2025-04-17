@@ -12,4 +12,5 @@ urlpatterns = [
     path('api/products/', views.product_list, name='product_list'),
     path('api/products/<str:product_id>/', views.product_detail, name='product_detail'),
     path('coupon_for_aliexpress/', views.aliexpress_coupons, name='aliexpress_coupons'),
+    path('coupon/<str:coupon_code>/', views.coupon_detail, name='coupon_detail'),
 ] 
