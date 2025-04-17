@@ -5,6 +5,7 @@ import json
 import csv
 import datetime
 import logging
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +17,11 @@ class Command(BaseCommand):
         
         # Import command
         import_parser = subparsers.add_parser('import', help='Import offers from a file')
-        import_parser.add_argument('file_path', type=str, help='Path to the JSON or CSV file containing offer data')
+        import_parser.add_argument('file_path', type=str, nargs='?', help='Path to the JSON or CSV file containing offer data')
         import_parser.add_argument('--update', action='store_true', help='Update existing offers instead of skipping them')
         import_parser.add_argument('--clear', action='store_true', help='Clear existing offers before importing')
+        import_parser.add_argument('--sample', choices=['json', 'csv', 'all'], 
+                                  help='Use sample data files (json, csv, or all)')
         
         # Remove command
         remove_parser = subparsers.add_parser('remove', help='Remove offers')
@@ -47,6 +50,38 @@ class Command(BaseCommand):
             
         # Execute the appropriate command
         if command == 'import':
+            # Check if sample option is specified
+            sample_type = options.get('sample')
+            if sample_type:
+                # Import sample data
+                base_dir = settings.BASE_DIR
+                
+                if sample_type == 'json' or sample_type == 'all':
+                    json_path = os.path.join(base_dir, 'intellishop', 'data', 'coupons', 'coupon_samples.json')
+                    if os.path.exists(json_path):
+                        self.stdout.write(f"Importing JSON sample from: {json_path}")
+                        options['file_path'] = json_path
+                        self.import_offers(options)
+                    else:
+                        self.stdout.write(self.style.WARNING(f"JSON sample file not found at: {json_path}"))
+                
+                if sample_type == 'csv' or sample_type == 'all':
+                    csv_path = os.path.join(base_dir, 'intellishop', 'data', 'coupons', 'sample_offers.csv')
+                    if os.path.exists(csv_path):
+                        self.stdout.write(f"Importing CSV sample from: {csv_path}")
+                        options['file_path'] = csv_path
+                        self.import_offers(options)
+                    else:
+                        self.stdout.write(self.style.WARNING(f"CSV sample file not found at: {csv_path}"))
+                
+                return
+            
+            # If no file_path is provided, show help
+            if 'file_path' not in options or not options['file_path']:
+                self.stdout.write(self.style.ERROR("Error: file_path is required"))
+                self.stdout.write("Use --sample json|csv|all to import sample data")
+                return
+            
             self.import_offers(options)
         elif command == 'remove':
             self.remove_offers(options)

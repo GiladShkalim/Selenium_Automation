@@ -4,6 +4,8 @@ from intellishop.utils.mongodb_utils import get_collection_handle
 import json
 import datetime
 import logging
+from django.conf import settings
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +19,16 @@ class Command(BaseCommand):
                            help='Output format (table or json)')
         parser.add_argument('--show-details', action='store_true', help='Show detailed information for each offer')
         parser.add_argument('--count-only', action='store_true', help='Show only count statistics')
+        parser.add_argument('--sample-files', action='store_true', 
+                           help='Verify against sample files in intellishop/data/coupons/')
 
     def handle(self, *args, **options):
         codes = options.get('codes')
-        source_files = options.get('source_files')
+        source_files = options.get('source_files', [])
         output_format = options.get('format', 'table')
         show_details = options.get('show_details', False)
         count_only = options.get('count_only', False)
+        sample_files = options.get('sample_files', False)
         
         # Get the coupons collection
         collection = Coupon.get_collection()
@@ -76,6 +81,22 @@ class Command(BaseCommand):
             # Track by code
             if offer.get('code'):
                 offer_by_codes[offer['code']] = offer
+        
+        # Use sample files if requested
+        if sample_files:
+            base_dir = settings.BASE_DIR
+            
+            json_path = os.path.join(base_dir, 'intellishop', 'data', 'coupons', 'coupon_samples.json')
+            csv_path = os.path.join(base_dir, 'intellishop', 'data', 'coupons', 'sample_offers.csv')
+            
+            # Add sample files to source_files list if they exist
+            if os.path.exists(json_path):
+                source_files.append(json_path)
+            if os.path.exists(csv_path):
+                source_files.append(csv_path)
+                
+            if not source_files:
+                self.stdout.write(self.style.WARNING('No sample files found in intellishop/data/coupons/'))
         
         # Check against source files if provided
         source_file_data = {}

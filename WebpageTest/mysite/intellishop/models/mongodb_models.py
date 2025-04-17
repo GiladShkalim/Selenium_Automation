@@ -324,6 +324,8 @@ class Coupon(MongoDBModel):
             'total': 0,
             'valid': 0,
             'invalid': 0,
+            'updated': 0,
+            'new': 0,
             'errors': []
         }
         
@@ -354,11 +356,22 @@ class Coupon(MongoDBModel):
             existing_coupon = cls.get_by_code(coupon['code'])
             
             if existing_coupon:
-                # Update existing coupon
-                cls.update_one({'code': coupon['code']}, coupon)
+                # Update existing coupon, preserving the MongoDB _id field
+                coupon_id = existing_coupon.get('_id')
+                # Create a copy of the coupon to avoid modifying the original
+                merged_coupon = coupon.copy()
+                # Update with new data, but preserve usage statistics if not provided
+                if 'usage_count' not in merged_coupon and 'usage_count' in existing_coupon:
+                    merged_coupon['usage_count'] = existing_coupon['usage_count']
+                if 'used_by' not in merged_coupon and 'used_by' in existing_coupon:
+                    merged_coupon['used_by'] = existing_coupon['used_by']
+                    
+                cls.update_one({'_id': coupon_id}, merged_coupon)
+                results['updated'] += 1
             else:
                 # Insert new coupon
                 cls.insert_one(coupon)
+                results['new'] += 1
                 
             results['valid'] += 1
             
@@ -371,6 +384,8 @@ class Coupon(MongoDBModel):
             'total': 0,
             'valid': 0,
             'invalid': 0,
+            'updated': 0,
+            'new': 0,
             'errors': []
         }
         
@@ -427,11 +442,22 @@ class Coupon(MongoDBModel):
                     existing_coupon = cls.get_by_code(coupon['code'])
                     
                     if existing_coupon:
-                        # Update existing coupon
-                        cls.update_one({'code': coupon['code']}, coupon)
+                        # Update existing coupon, preserving the MongoDB _id field
+                        coupon_id = existing_coupon.get('_id')
+                        # Create a copy of the coupon to avoid modifying the original
+                        merged_coupon = coupon.copy()
+                        # Update with new data, but preserve usage statistics if not provided
+                        if 'usage_count' not in merged_coupon and 'usage_count' in existing_coupon:
+                            merged_coupon['usage_count'] = existing_coupon['usage_count']
+                        if 'used_by' not in merged_coupon and 'used_by' in existing_coupon:
+                            merged_coupon['used_by'] = existing_coupon['used_by']
+                            
+                        cls.update_one({'_id': coupon_id}, merged_coupon)
+                        results['updated'] += 1
                     else:
                         # Insert new coupon
                         cls.insert_one(coupon)
+                        results['new'] += 1
                         
                     results['valid'] += 1
                     
