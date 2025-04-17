@@ -87,13 +87,12 @@ is_in_virtualenv() {
 # MongoDB configuration setup
 setup_mongodb_config() {
     log "Setting up MongoDB configuration..."
-    
     # Create .env file if it doesn't exist
     if [ ! -f "$ENV_FILE" ]; then
         log "Creating environment configuration file..."
         cat > "$ENV_FILE" << EOF
 # MongoDB Configuration
-MONGODB_URI=mongodb+srv://giladshkalim:Gilad1212@intellidb.yuauj7i.mongodb.net/IntelliDB?retryWrites=true&w=majority&appName=IntelliDB
+MONGODB_URI=mongodb+srv://giladshkalim:Gilad1212@intellidb.yuauj7i.mongodb.net/?retryWrites=true&w=majority&appName=IntelliDB
 MONGODB_NAME=IntelliDB
 
 # Django Settings

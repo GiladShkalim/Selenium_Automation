@@ -1,7 +1,7 @@
 # View functions that handle HTTP requests and return responses
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .models.mongodb_models import Product, User
+from .models.mongodb_models import Product, User, Coupon
 import json
 from pymongo.errors import DuplicateKeyError
 
@@ -136,20 +136,23 @@ def product_detail(request, product_id):
     return JsonResponse({'product': product})
 
 def aliexpress_coupons(request):
-    return render(request, 'intellishop/coupon_for_aliexpress.html')
+    # Get all active coupons from the database
+    coupons = Coupon.get_active_coupons()
+    
+    # Convert ObjectId to string for JSON serialization
+    for coupon in coupons:
+        if coupon and '_id' in coupon:
+            coupon['_id'] = str(coupon['_id'])
+    
+    return render(request, 'intellishop/coupon_for_aliexpress.html', {'coupons': coupons})
 
 def coupon_detail(request, coupon_code):
-        # You can store coupon details in a database or dictionary
-
-    coupons = {
-        'ILMAR12': {
-            'code': 'ILMAR12',
-            'discount': '7.48₪',
-            'total': '56.11₪',
-            'expiry': '16/04/2025'
-        },
-                # Add more coupons here
-
-    }
-    coupon = coupons.get(coupon_code)
+    # Get coupon from database instead of hardcoded dictionary
+    coupon = Coupon.get_by_code(coupon_code)
+    
+    if coupon:
+        # Convert ObjectId to string for template
+        if '_id' in coupon:
+            coupon['_id'] = str(coupon['_id'])
+    
     return render(request, 'intellishop/coupon_detail.html', {'coupon': coupon})

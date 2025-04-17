@@ -32,6 +32,22 @@ def create_indexes():
             logger.error(f"Error creating product indexes: {str(e)}")
     else:
         logger.error("Could not get products collection handle")
+        
+    # Coupons collection
+    coupons_collection = get_collection_handle('coupons')
+    
+    # Add None check before trying to create indexes
+    if coupons_collection is not None:
+        try:
+            # Create unique index on coupon code
+            coupons_collection.create_index('code', unique=True)
+            # Create index for finding active coupons
+            coupons_collection.create_index('date_expires')
+            logger.info("Created coupon collection indexes")
+        except Exception as e:
+            logger.error(f"Error creating coupon indexes: {str(e)}")
+    else:
+        logger.error("Could not get coupons collection handle")
 
 def initialize_database():
     """Initialize MongoDB database with required setup"""
