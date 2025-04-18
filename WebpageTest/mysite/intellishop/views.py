@@ -15,26 +15,61 @@ def login_view(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            user = User.find_one({
-                'email': data['email'], 
-                'password': data['password']
-            })
+            print("\n=== FULL DEBUG ===")
+            print("Attempting login with:", data)
             
-            if user is not None:
-                # In production, use Django session framework properly
-                return JsonResponse({
-                    'status': 'success',
-                    'message': 'Login successful',
-                    'redirect': '/dashboard/',
-                    'user_id': str(user['_id'])
+            # Find user and print raw result
+            collection = User.get_collection()
+            raw_user = collection.find_one({'email': data['email']})
+            print("Raw MongoDB result:", raw_user)
+            
+            user = User.find_one({'email': data['email']})
+            print("User object:", user)
+            
+            print("=== Login Debug ===")
+            print("1. Login attempt with email:", data['email'])
+            print("2. Provided password:", data['password'])
+            
+            # Find user by email only first
+            if user:
+                print("4. User details:", {
+                    'username': user.get('username'),
+                    'email': user.get('email'),
+                    'password': user.get('password'),
+                    'status': user.get('status')
                 })
+                
+                stored_password = user.get('password', '')
+                input_password = data.get('password', '')
+                print("5. Password comparison:")
+                print(f"   - Stored password: '{stored_password}'")
+                print(f"   - Input password: '{input_password}'")
+                print(f"   - Length of stored password: {len(stored_password)}")
+                print(f"   - Length of input password: {len(input_password)}")
+                print(f"   - Are passwords equal? {stored_password == input_password}")
+                
+                if stored_password == input_password:
+                    request.session['user_id'] = str(user['_id'])
+                    request.session['username'] = user['username']
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': f"Welcome back {user['username']}",
+                        'redirect': '/home/',
+                        'user_id': str(user['_id'])
+                    })
+                else:
+                    print("6. Password mismatch")
             else:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Invalid credentials'
-                }, status=400)
+                print("3. No user found with this email")
+            
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Wrong Email/Password'
+            }, status=400)
                 
         except Exception as e:
+            print("Login error:", str(e))
             return JsonResponse({
                 'status': 'error',
                 'message': str(e)
@@ -46,8 +81,9 @@ def register(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            print("Registration data:", data)  # Debug log
             
-            # Check if user already exists - with explicit None check
+            # Check if user already exists
             existing_user = User.get_by_username(data['username'])
             if existing_user is not None:
                 return JsonResponse({
@@ -65,13 +101,14 @@ def register(request):
             # Create new user in MongoDB
             user_id = User.create_user(
                 username=data['username'],
-                password=data['password'],  # In production, hash the password
+                password=data['password'],
                 email=data['email'],
                 status=data['status'],
                 age=data['age'],
                 location=data['location'],
                 hobbies=data['hobbies']
             )
+            print("Created user with ID:", user_id)  # Debug log
             
             return JsonResponse({
                 'status': 'success', 
@@ -79,13 +116,8 @@ def register(request):
                 'user_id': str(user_id)
             })
             
-        except DuplicateKeyError:
-            return JsonResponse({
-                'status': 'error', 
-                'message': 'Username or email already exists'
-            }, status=400)
-            
         except Exception as e:
+            print("Registration error:", str(e))  # Debug log
             return JsonResponse({
                 'status': 'error', 
                 'message': str(e)
@@ -94,15 +126,35 @@ def register(request):
     return render(request, 'intellishop/register.html')
 
 def dashboard(request):
-    # Get all users from MongoDB
-    users = User.find()
-    
-    # Convert MongoDB ObjectId to string for template
-    for user in users:
-        if user is not None and '_id' in user:
-            user['_id'] = str(user['_id'])
-    
-    return render(request, 'intellishop/dashboard.html', {'users': users})
+    try:
+        # Get all users from MongoDB without any sorting
+        users = list(User.find())  # Convert cursor to list immediately
+        
+        # Process the users
+        users_list = []
+        for user in users:
+            if user is not None:
+                # Convert ObjectId to string and ensure all fields exist
+                user_data = {
+                    'username': user.get('username', ''),
+                    'email': user.get('email', ''),
+                    'password': user.get('password', ''),
+                    'status': user.get('status', ''),
+                    'age': user.get('age', ''),
+                    'location': user.get('location', ''),
+                    'hobbies': user.get('hobbies', []),
+                    '_id': str(user.get('_id', ''))
+                }
+                users_list.append(user_data)
+        
+        return render(request, 'intellishop/dashboard.html', {'users': users_list})
+        
+    except Exception as e:
+        # Handle any errors and return an error message
+        return render(request, 'intellishop/dashboard.html', {
+            'users': [],
+            'error': f"Error loading users: {str(e)}"
+        })
 
 def template(request):
     return render(request, 'intellishop/Site_template.html')
