@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from .models.mongodb_models import Product, User, Coupon
 import json
 from pymongo.errors import DuplicateKeyError
+from bson.objectid import ObjectId
 
 def index(request):
     return render(request, 'intellishop/index.html')
@@ -198,17 +199,86 @@ def aliexpress_coupons(request):
     
     return render(request, 'intellishop/coupon_for_aliexpress.html', {'coupons': coupons})
 
-def coupon_detail(request, coupon_code):
-    # Get coupon from database instead of hardcoded dictionary
-    coupon = Coupon.get_by_code(coupon_code)
+def coupon_detail(request, store):
+    # Dictionary mapping store slugs to their display names
+    store_names = {
+        'lastprice': 'Lastprice / לאסט פרייס',
+        'liberty': 'Liberty / ליברטי',
+        'weshoes': 'Weshoes / ווישוז',
+        'twentyfourseven': 'Twenty Four Seven / טוונטי פור סבן',
+        'renuar': 'Renuar / רנואר',
+        'castro': 'Castro / קסטרו',
+        '365': '365 / שלוש שישים וחמש',
+        'ace': 'ACE / אייס',
+        'shoresh': 'Shoresh / שורש',
+        'zer4u': 'ZER4U / זר פור יו',
+        'hosamtov': 'Hosam Tov / חוסם טוב',
+        'nautica': 'Nautica / נאוטיקה',
+        'dynamica': 'Dynamica / דינמיקה',
+        'magnolia': 'Magnolia Jeans / מגנוליה ג\'ינס',
+        'intimaya': 'Intimaya / אינטימיה',
+        'noizz': 'NOIZZ / נויז',
+        'replay': 'Replay / ריפליי',
+        'olam': 'Olam Hakitniyot / עולם הקטניות',
+        'timberland': 'Timberland / טימברלנד',
+        'children': 'Children\'s Place / צ\'ילדרן',
+        'sebras': 'Sebras / סברס'
+    }
     
-    if coupon:
-        # Convert ObjectId to string for template
-        if '_id' in coupon:
-            coupon['_id'] = str(coupon['_id'])
+    # Get the full name from the dictionary, or use a formatted version of the store slug if not found
+    store_name = store_names.get(store, store.replace('-', ' ').title())
     
-    return render(request, 'intellishop/coupon_detail.html', {'coupon': coupon})
+    context = {
+        'store_name': store_name,
+        'message': 'No coupons found'
+    }
+    return render(request, 'intellishop/coupon_detail.html', context)
 
 def filter_search(request):
     print("Debug: Accessing filter_search view")  # Add debug print
     return render(request, 'intellishop/filter_search.html')
+
+def profile_view(request):
+    # Get user from session
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+    
+    user = User.find_one({'_id': ObjectId(user_id)})
+    if not user:
+        return redirect('login')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'update_username':
+            new_username = request.POST.get('username')
+            # Add validation and email verification here
+            User.update_one({'_id': ObjectId(user_id)}, {'$set': {'username': new_username}})
+            
+        elif action == 'update_password':
+            current_password = request.POST.get('current_password')
+            new_password = request.POST.get('new_password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            if user.get('password') == current_password and new_password == confirm_password:
+                # Add email verification here
+                User.update_one({'_id': ObjectId(user_id)}, {'$set': {'password': new_password}})
+            
+        elif action == 'delete_account':
+            # Add email verification here
+            User.delete_one({'_id': ObjectId(user_id)})
+            return redirect('logout')
+
+    context = {
+        'username': user.get('username'),
+        'email': user.get('email')
+    }
+    return render(request, 'intellishop/profile.html', context)
+
+def logout_view(request):
+    # Clear the session
+    request.session.flush()
+    # Redirect to home page or login page
+    return redirect('login')
+
