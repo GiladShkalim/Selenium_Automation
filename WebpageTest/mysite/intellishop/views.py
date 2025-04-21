@@ -205,3 +205,7 @@ def coupon_detail(request, coupon_code):
     }
     coupon = coupons.get(coupon_code)
     return render(request, 'intellishop/coupon_detail.html', {'coupon': coupon})
+
+def filter_search(request):
+    print("Debug: Accessing filter_search view")  # Add debug print
+    return render(request, 'intellishop/filter_search.html')

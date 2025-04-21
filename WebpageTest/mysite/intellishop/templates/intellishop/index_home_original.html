@@ -25,6 +25,15 @@
         .navbar {
             direction: ltr !important;
         }
+        .nav-item .bi-search {
+            font-size: 1.1rem;
+        }
+        .nav-link {
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover {
+            color: #198754 !important;  /* Bootstrap success color */
+        }
     </style>
 </head>
 <body>
@@ -110,6 +119,12 @@
                         <ul class="dropdown-menu" aria-labelledby="nav-account" id="account-dropdown">
                             <!-- Dynamic content will load here -->
                         </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'filter_search' %}">
+                            <i class="bi bi-search"></i>
+                            Search
+                        </a>
                     </li>
                 </ul>
             </div>
