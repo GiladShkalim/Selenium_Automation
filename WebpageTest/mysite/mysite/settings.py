@@ -82,7 +82,7 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',  # Use in-memory database instead of file
+        'NAME': BASE_DIR / 'db.sqlite3',  # File-based database
     }
 }
 
@@ -171,3 +171,42 @@ To connect to MongoDB Atlas:
    MONGODB_NAME=<database>
 3. Replace the placeholders with your actual MongoDB credentials
 """
+
+# Session configuration
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Store sessions in the database
+SESSION_COOKIE_AGE = 86400  # 1 day in seconds
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+
+# Make sure you're using a persistent database, not in-memory
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',  # File-based database (NOT in-memory)
+    }
+}
+
+# Make sure these middleware components are included and in this order
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',  # This must be near the top
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# Make sure sessions app is installed
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',  # This must be included
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'intellishop',
+]
+
+# For in-memory database, consider using cache-based sessions instead
+# SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+# SESSION_CACHE_ALIAS = 'default'

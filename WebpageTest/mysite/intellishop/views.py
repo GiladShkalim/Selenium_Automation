@@ -53,6 +53,11 @@ def login_view(request):
                     request.session['user_id'] = str(user['_id'])
                     request.session['username'] = user['username']
                     
+                    # Debug session data
+                    print("=== SESSION DEBUG ===")
+                    print("Session ID:", request.session.session_key)
+                    print("All session data:", dict(request.session))
+                    
                     return JsonResponse({
                         'status': 'success',
                         'message': f"Welcome back {user['username']}",
@@ -61,13 +66,16 @@ def login_view(request):
                     })
                 else:
                     print("6. Password mismatch")
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Wrong Email/Password'
+                    }, status=400)
             else:
                 print("3. No user found with this email")
-            
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Wrong Email/Password'
-            }, status=400)
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Wrong Email/Password'
+                }, status=400)
                 
         except Exception as e:
             print("Login error:", str(e))
@@ -239,6 +247,7 @@ def filter_search(request):
     return render(request, 'intellishop/filter_search.html')
 
 def profile_view(request):
+    
     # Get user from session
     user_id = request.session.get('user_id')
     if not user_id:
