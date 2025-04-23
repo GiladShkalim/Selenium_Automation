@@ -16,5 +16,6 @@ urlpatterns = [
     path('filter_search/', views.filter_search, name='filter_search'),
     path('profile/', views.profile_view, name='profile'),
     path('logout/', views.logout_view, name='logout'),
+    path('coupon/<str:code>/', views.coupon_code_view, name='coupon_code'),
 ] 
 

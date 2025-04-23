@@ -5,6 +5,10 @@ from .models.mongodb_models import Product, User, Coupon
 import json
 from pymongo.errors import DuplicateKeyError
 from bson.objectid import ObjectId
+import csv
+import os
+from datetime import datetime
+from django.templatetags.static import static
 
 def index(request):
     return render(request, 'intellishop/index.html')
@@ -20,12 +24,46 @@ def index_home(request):
     if not user:
         return redirect('login')
 
+    # Get path to JSON file
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    json_path = os.path.join(base_dir, 'intellishop', 'data', 'coupon_samples.json')
+
+    # Load ONLY the coupons from the JSON file
+    formatted_coupons = []
+    
+    try:
+        with open(json_path, 'r') as f:
+            json_coupons = json.load(f)
+            for coupon in json_coupons:
+                # Get the product categories, or use a default if empty
+                categories = coupon['product_categories']
+                coupon_name = ' & '.join(categories).title() if categories else "All Products"
+                
+                # Format the amount based on discount_type
+                amount = f"{coupon['amount']}%" if coupon['discount_type'] == 'percent' else f"${coupon['amount']}"
+                
+                formatted_coupon = {
+                    'store_name': 'AliExpress',
+                    'store_logo': '',  # Empty since we're not sure about the logo
+                    'code': coupon['code'],
+                    'amount': amount,
+                    'name': coupon_name,
+                    'description': coupon['description'],
+                    'date_expires': datetime.strptime(coupon['date_expires'].split('T')[0], '%Y-%m-%d'),
+                    'store_url': 'https://www.aliexpress.com',
+                    'minimum_amount': coupon['minimum_amount']
+                }
+                formatted_coupons.append(formatted_coupon)
+    except Exception as e:
+        print(f"Error loading JSON coupons: {e}")
+
     context = {
         'user': {
             'email': user.get('email'),
             'status': user.get('status', []),
             'hobbies': user.get('hobbies', [])
-        }
+        },
+        'filtered_coupons': formatted_coupons
     }
     
     return render(request, 'intellishop/index_home_original.html', context)
@@ -215,15 +253,22 @@ def product_detail(request, product_id):
     return JsonResponse({'product': product})
 
 def aliexpress_coupons(request):
-    # Get all active coupons from the database
-    coupons = Coupon.get_active_coupons()
+    code = request.GET.get('code')
+    if code:
+        # Get the specific coupon details from your JSON file
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        json_path = os.path.join(base_dir, 'intellishop', 'data', 'coupon_samples.json')
+        
+        try:
+            with open(json_path, 'r') as f:
+                coupons = json.load(f)
+                coupon = next((c for c in coupons if c['code'] == code), None)
+                if coupon:
+                    return render(request, 'intellishop/coupon_for_aliexpress.html', {'coupon': coupon})
+        except Exception as e:
+            print(f"Error loading coupon: {e}")
     
-    # Convert ObjectId to string for JSON serialization
-    for coupon in coupons:
-        if coupon and '_id' in coupon:
-            coupon['_id'] = str(coupon['_id'])
-    
-    return render(request, 'intellishop/coupon_for_aliexpress.html', {'coupons': coupons})
+    return render(request, 'intellishop/coupon_for_aliexpress.html', {'error': 'Coupon not found'})
 
 def coupon_detail(request, store):
     # Dictionary mapping store slugs to their display names
@@ -308,4 +353,28 @@ def logout_view(request):
     request.session.flush()
     # Redirect to home page or login page
     return redirect('login')
+
+def coupon_code_view(request, code):
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    json_path = os.path.join(base_dir, 'intellishop', 'data', 'coupon_samples.json')
+    
+    try:
+        with open(json_path, 'r') as f:
+            coupons = json.load(f)
+            # Case-insensitive comparison
+            coupon = next((c for c in coupons if c['code'].upper() == code.upper()), None)
+            
+            if coupon:
+                formatted_coupon = {
+                    'code': coupon['code'],
+                    'amount': f"{coupon['amount']}%" if coupon['discount_type'] == 'percent' else f"${coupon['amount']}",
+                    'minimum_amount': coupon['minimum_amount'],
+                }
+                return render(request, 'intellishop/coupon_code.html', {'coupon': formatted_coupon})
+            
+    except Exception as e:
+        print(f"Error loading coupon: {e}")
+    
+    # If we get here, redirect to home instead of showing error
+    return redirect('index_home')
 
