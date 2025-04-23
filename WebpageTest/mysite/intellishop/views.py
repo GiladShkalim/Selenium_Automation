@@ -10,7 +10,25 @@ def index(request):
     return render(request, 'intellishop/index.html')
 
 def index_home(request):
-    return render(request, 'intellishop/index_home_original.html')
+    # Get user details from session
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+    
+    # Get user from MongoDB
+    user = User.find_one({'_id': ObjectId(user_id)})
+    if not user:
+        return redirect('login')
+
+    context = {
+        'user': {
+            'email': user.get('email'),
+            'status': user.get('status', []),
+            'hobbies': user.get('hobbies', [])
+        }
+    }
+    
+    return render(request, 'intellishop/index_home_original.html', context)
 
 def login_view(request):
     if request.method == 'POST':
