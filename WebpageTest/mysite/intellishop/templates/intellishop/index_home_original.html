@@ -51,6 +51,32 @@
         .nav-link:hover {
             color: #198754 !important;  /* Bootstrap success color */
         }
+        body.night-mode {
+            background-color: #000 !important;
+            color: #e0e0e0 !important;
+        }
+        body.night-mode .navbar,
+        body.night-mode .dropdown-menu,
+        body.night-mode .card,
+        body.night-mode .user-welcome,
+        body.night-mode .modal-content {
+            background-color: #121212 !important;
+            color: #e0e0e0 !important;
+        }
+        body.night-mode .navbar,
+        body.night-mode .navbar .nav-link,
+        body.night-mode .navbar .navbar-brand,
+        body.night-mode .navbar .bi,
+        body.night-mode .navbar .dropdown-toggle,
+        body.night-mode .navbar .dropdown-item {
+            color: #f8f9fa !important;
+        }
+        body.night-mode .navbar .nav-link:hover,
+        body.night-mode .navbar .dropdown-item:hover,
+        body.night-mode .navbar .dropdown-item:focus {
+            color: #ffc107 !important;
+            background-color: #23272b !important;
+        }
     </style>
 </head>
 <body>
@@ -64,6 +90,7 @@
             </a>
             
             <!-- Search form -->
+            <!--
             <div class="d-flex mx-auto">
                 <form class="d-flex position-relative">
                     <input class="form-control me-2" type="search" placeholder="Search for products..." aria-label="Search" id="search-input">
@@ -72,6 +99,7 @@
                     </button>
                 </form>
             </div>
+            -->
             
             <!-- Navbar toggle button for mobile -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -101,6 +129,11 @@
                             {% endif %}
                         </ul>
                     </li>
+                    <li class="nav-item">
+                        <button id="night-mode-toggle" class="btn btn-outline-dark ms-2" title="Toggle Night Mode">
+                            <i class="bi bi-moon"></i>
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -110,7 +143,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-top border-bottom">
         <div class="container">
             <!-- Home Button -->
-            <a href="{% url 'index' %}" class="btn btn-success me-3" id="home-btn">
+            <a href="{% url 'index_home' %}" class="btn btn-success me-3" id="home-btn">
                 <i class="bi bi-house-door me-2"></i> Home
             </a>
             
@@ -440,6 +473,27 @@
                 }
             });
         });
+    </script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggleBtn = document.getElementById('night-mode-toggle');
+        const body = document.body;
+
+        // Load preference
+        if (localStorage.getItem('nightMode') === 'on') {
+            body.classList.add('night-mode');
+        }
+
+        toggleBtn.addEventListener('click', function() {
+            body.classList.toggle('night-mode');
+            if (body.classList.contains('night-mode')) {
+                localStorage.setItem('nightMode', 'on');
+            } else {
+                localStorage.setItem('nightMode', 'off');
+            }
+        });
+    });
     </script>
 </body>
 </html>
