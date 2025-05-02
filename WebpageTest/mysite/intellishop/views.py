@@ -69,6 +69,9 @@ def index_home(request):
     return render(request, 'intellishop/index_home_original.html', context)
 
 def login_view(request):
+    # If user is already logged in, redirect to home
+    if request.session.get('user_id'):
+        return redirect('index_home')
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -143,6 +146,9 @@ def login_view(request):
     return render(request, 'intellishop/login.html')
 
 def register(request):
+    # If user is already logged in, redirect to home
+    if request.session.get('user_id'):
+        return redirect('index_home')
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
