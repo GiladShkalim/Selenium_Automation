@@ -13,6 +13,7 @@ import csv
 import logging
 from datetime import datetime
 from pathlib import Path
+import pymongo
 
 # Set up logging
 logging.basicConfig(
@@ -38,11 +39,33 @@ except ImportError as e:
     logger.error(f"Failed to import Django modules: {e}")
     sys.exit(1)
 
+class DatabaseManager:
+    _instance = None
+    _db = None
+    _client = None
+    
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = DatabaseManager()
+        return cls._instance
+    
+    def initialize(self):
+        if self._client is None:
+            # Connect to MongoDB
+            uri = os.getenv('MONGODB_URI')
+            if not uri:
+                raise ValueError("MongoDB URI not configured")
+            
+            self._client = pymongo.MongoClient(uri)
+            self._db = self._client[os.getenv('MONGODB_NAME', 'IntelliDB')]
+        return self._db
+
 def test_mongodb_connection():
     """Test the MongoDB connection before proceeding"""
     try:
-        db, client = get_db_handle()
-        server_info = client.server_info()
+        db = DatabaseManager.get_instance().initialize()
+        server_info = db.client.server_info()
         logger.info(f"Successfully connected to MongoDB version: {server_info['version']}")
         return True
     except Exception as e:
@@ -79,6 +102,22 @@ def find_data_files():
     
     return json_files, csv_files
 
+def process_coupon_data(coupon_data):
+    """Custom pre-validation processing for coupon data"""
+    # Normalize data fields
+    if 'code' in coupon_data:
+        coupon_data['code'] = coupon_data['code'].strip().upper()
+    
+    # Add computed fields
+    if 'date_created' not in coupon_data:
+        coupon_data['date_created'] = datetime.now().isoformat()
+    
+    # Add business logic validations
+    if coupon_data.get('discount_type') == 'percent' and coupon_data.get('amount', 0) > 50:
+        logger.warning(f"High discount detected: {coupon_data['code']} with {coupon_data['amount']}%")
+    
+    return coupon_data
+
 def import_json_file(file_path):
     """Import data from a JSON file"""
     try:
@@ -98,7 +137,8 @@ def import_json_file(file_path):
         # Check if this looks like coupon data
         if data and all('code' in item for item in data[:5]):  # Check first 5 items
             logger.info(f"Identified {file_path} as coupon data")
-            results = Coupon.import_from_json(data)
+            processed_data = [process_coupon_data(item) for item in data]
+            results = Coupon.import_from_json(processed_data)
             
             logger.info(f"JSON Import results: Total: {results.get('total', 0)}, "
                        f"Valid: {results.get('valid', 0)}, "

@@ -449,7 +449,7 @@ test_mongodb_connection || log "Warning: MongoDB connection test failed. The app
 # Check if port is already in use
 if check_port_in_use $PORT; then
     log "Warning: Port $PORT is already in use"
-    pid=$(lsof -t -i:$PORT 2>/dev/null || true)
+    pid=$(lsof -i:$PORT 2>/dev/null || true)
     if [ -n "$pid" ]; then
         log "Process $pid is using port $PORT"
         read -p "Do you want to kill this process and free the port? (y/n) " -n 1 -r
