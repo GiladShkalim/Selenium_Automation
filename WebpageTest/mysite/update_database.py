@@ -80,6 +80,19 @@ def find_data_files():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(base_dir, 'mysite', 'intellishop', 'data')
     
+    # Add fallback paths if the primary one doesn't exist
+    if not os.path.exists(data_dir):
+        alternative_paths = [
+            os.path.join(base_dir, 'intellishop', 'data'),
+            os.path.join(base_dir, 'mysite', 'data')
+        ]
+        
+        for alt_path in alternative_paths:
+            if os.path.exists(alt_path):
+                data_dir = alt_path
+                logger.info(f"Using alternative data directory: {data_dir}")
+                break
+    
     json_files = []
     csv_files = []
     
@@ -122,45 +135,28 @@ def import_json_file(file_path):
     """Import data from a JSON file"""
     try:
         logger.info(f"Importing data from JSON file: {file_path}")
-        
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, 'r') as f:
             data = json.load(f)
-        
-        # Handle both arrays and single objects
-        if isinstance(data, dict):
-            data = [data]  # Convert to list if it's a single object
-        
-        if not isinstance(data, list):
-            logger.warning(f"Invalid JSON format in {file_path}. Expected a list or object.")
-            return False
-        
-        # Check if this looks like coupon data
-        if data and all('code' in item for item in data[:5]):  # Check first 5 items
-            logger.info(f"Identified {file_path} as coupon data")
-            processed_data = [process_coupon_data(item) for item in data]
-            results = Coupon.import_from_json(processed_data)
             
-            logger.info(f"JSON Import results: Total: {results.get('total', 0)}, "
-                       f"Valid: {results.get('valid', 0)}, "
-                       f"Invalid: {results.get('invalid', 0)}, "
-                       f"Updated: {results.get('updated', 0)}, "
-                       f"New: {results.get('new', 0)}")
-            
-            if results.get("errors"):
-                logger.warning("Import errors:")
-                for error in results["errors"][:10]:  # Show only first 10 errors
-                    logger.warning(f"  - {error}")
+            # Determine type of data based on file name or content
+            if 'coupon_samples.json' in file_path:
+                # Handle coupon data specifically
+                results = Coupon.import_from_json(data)
+                logger.info(f"Imported coupon data: {results['valid']} valid, {results['invalid']} invalid")
+                return True
+            else:
+                # Look for array of objects with identifiable fields
+                if isinstance(data, list) and len(data) > 0:
+                    sample = data[0]
+                    if 'title' in sample and ('price' in sample or 'price_type' in sample or 'coupon_code' in sample):
+                        results = Coupon.import_from_json(data)
+                        logger.info(f"Imported as coupon data: {results['valid']} valid, {results['invalid']} invalid")
+                        return True
                 
-                if len(results["errors"]) > 10:
-                    logger.warning(f"  ... and {len(results['errors']) - 10} more errors")
-            
-            return True
-        else:
-            logger.warning(f"Unknown data format in {file_path}. Skipping.")
-            return False
-            
+                logger.warning(f"Unknown data format in {file_path}. Skipping.")
+                return False
     except Exception as e:
-        logger.error(f"Error importing data from JSON file {file_path}: {e}")
+        logger.error(f"Error importing JSON file {file_path}: {str(e)}")
         return False
 
 def import_csv_file(file_path):
@@ -168,63 +164,60 @@ def import_csv_file(file_path):
     try:
         logger.info(f"Importing data from CSV file: {file_path}")
         
-        # Try to detect if this is a coupon/offer file by checking headers
-        with open(file_path, 'r', encoding='utf-8') as f:
-            first_line = f.readline().strip().lower()
-            
-        # Check if headers match expected coupon fields
-        coupon_indicators = ['code', 'amount', 'discount_type']
-        is_coupon_file = all(indicator in first_line for indicator in coupon_indicators)
-        
-        if is_coupon_file:
-            logger.info(f"Identified {file_path} as coupon/offer data")
-            results = Coupon.import_from_csv(file_path)
-            
-            logger.info(f"CSV Import results: Total: {results.get('total', 0)}, "
-                       f"Valid: {results.get('valid', 0)}, "
-                       f"Invalid: {results.get('invalid', 0)}, "
-                       f"Updated: {results.get('updated', 0)}, "
-                       f"New: {results.get('new', 0)}")
-            
-            if results.get("errors"):
-                logger.warning("Import errors:")
-                for error in results["errors"][:10]:  # Show only first 10 errors
-                    logger.warning(f"  - {error}")
-                
-                if len(results["errors"]) > 10:
-                    logger.warning(f"  ... and {len(results['errors']) - 10} more errors")
-                    
+        # First try to determine the file type by name
+        if 'sample_offers.csv' in file_path or 'coupons' in file_path.lower():
+            with open(file_path, 'r') as f:
+                results = Coupon.import_from_csv(f)
+                logger.info(f"Imported coupon data: {results['valid']} valid, {results['invalid']} invalid")
             return True
         else:
+            # Try to determine type by reading headers
+            with open(file_path, 'r') as f:
+                reader = csv.reader(f)
+                headers = next(reader, None)
+                
+                if headers:
+                    # Check if headers match coupon fields
+                    coupon_fields = ['title', 'price', 'coupon_code', 'price_type', 'valid_until']
+                    matches = sum(1 for field in coupon_fields if field in headers)
+                    
+                    if matches >= 3:  # If at least 3 coupon fields match
+                        f.seek(0)  # Reset file pointer to beginning
+                        results = Coupon.import_from_csv(f)
+                        logger.info(f"Imported as coupon data: {results['valid']} valid, {results['invalid']} invalid")
+                        return True
+            
             logger.warning(f"Unknown CSV format in {file_path}. Skipping.")
             return False
-            
     except Exception as e:
-        logger.error(f"Error importing data from CSV file {file_path}: {e}")
+        logger.error(f"Error importing CSV file {file_path}: {str(e)}")
         return False
 
 def verify_database_content():
-    """Verify the imported content"""
+    """Verify that the database was updated successfully"""
     try:
-        # Count items in collections
-        coupons_count = Coupon.count()
-        products_count = Product.count() if hasattr(Product, 'count') else 0
-        users_count = User.count() if hasattr(User, 'count') else 0
+        # Count documents in collections
+        current_date = datetime.now()
         
-        logger.info(f"Database verification: {coupons_count} coupons, "
-                   f"{products_count} products, {users_count} users")
+        logger.info("Verifying database content...")
         
-        # Get some stats about coupons
+        # Check coupon collection
         active_coupons = 0
         expired_coupons = 0
-        current_date = datetime.now().isoformat()
         
-        coupons = list(Coupon.find({}))
-        for coupon in coupons:
-            if 'date_expires' in coupon and coupon['date_expires'] and coupon['date_expires'] < current_date:
-                expired_coupons += 1
-            else:
-                active_coupons += 1
+        # Use the correct method to count documents
+        collection = Coupon.get_collection()
+        if collection:
+            active_coupons = collection.count_documents({
+                '$or': [
+                    {'valid_until': {'$gt': current_date}},
+                    {'valid_until': None}
+                ]
+            })
+            
+            expired_coupons = collection.count_documents({
+                'valid_until': {'$lte': current_date}
+            })
         
         logger.info(f"Coupon stats: {active_coupons} active, {expired_coupons} expired")
         return True

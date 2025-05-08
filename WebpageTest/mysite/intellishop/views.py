@@ -27,7 +27,13 @@ def index_home(request):
     # Get path to JSON file
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     json_path = os.path.join(base_dir, 'intellishop', 'data', 'coupon_samples.json')
-
+    
+    # Add fallback path if the primary one doesn't exist
+    if not os.path.exists(json_path):
+        alt_json_path = os.path.join(base_dir, 'data', 'coupon_samples.json')
+        if os.path.exists(alt_json_path):
+            json_path = alt_json_path
+    
     # Load ONLY the coupons from the JSON file
     formatted_coupons = []
     
@@ -265,6 +271,12 @@ def aliexpress_coupons(request):
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         json_path = os.path.join(base_dir, 'intellishop', 'data', 'coupon_samples.json')
         
+        # Add fallback path if the primary one doesn't exist
+        if not os.path.exists(json_path):
+            alt_json_path = os.path.join(base_dir, 'data', 'coupon_samples.json')
+            if os.path.exists(alt_json_path):
+                json_path = alt_json_path
+        
         try:
             with open(json_path, 'r') as f:
                 coupons = json.load(f)
@@ -363,6 +375,12 @@ def logout_view(request):
 def coupon_code_view(request, code):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     json_path = os.path.join(base_dir, 'intellishop', 'data', 'coupon_samples.json')
+    
+    # Add fallback path if the primary one doesn't exist
+    if not os.path.exists(json_path):
+        alt_json_path = os.path.join(base_dir, 'data', 'coupon_samples.json')
+        if os.path.exists(alt_json_path):
+            json_path = alt_json_path
     
     try:
         with open(json_path, 'r') as f:
