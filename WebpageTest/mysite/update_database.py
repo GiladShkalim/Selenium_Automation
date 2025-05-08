@@ -166,24 +166,41 @@ def import_csv_file(file_path):
         
         # First try to determine the file type by name
         if 'sample_offers.csv' in file_path or 'coupons' in file_path.lower():
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                # Add more detailed logging to debug import issues
+                logger.info(f"Starting CSV import from {file_path}")
                 results = Coupon.import_from_csv(f)
+                if results['invalid'] > 0:
+                    for error in results.get('errors', []):
+                        logger.warning(f"CSV import error: {error}")
                 logger.info(f"Imported coupon data: {results['valid']} valid, {results['invalid']} invalid")
             return True
         else:
             # Try to determine type by reading headers
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 headers = next(reader, None)
                 
                 if headers:
-                    # Check if headers match coupon fields
-                    coupon_fields = ['title', 'price', 'coupon_code', 'price_type', 'valid_until']
+                    # Log the headers we found
+                    logger.info(f"CSV headers found: {', '.join(headers)}")
+                    
+                    # Check if headers match coupon fields - use both naming conventions
+                    coupon_fields = ['title', 'price', 'coupon_code', 'price_type', 'discount_type', 'valid_until']
                     matches = sum(1 for field in coupon_fields if field in headers)
+                    
+                    logger.info(f"Found {matches} matching coupon fields in CSV headers")
                     
                     if matches >= 3:  # If at least 3 coupon fields match
                         f.seek(0)  # Reset file pointer to beginning
+                        logger.info("CSV file appears to contain coupon data, importing...")
                         results = Coupon.import_from_csv(f)
+                        
+                        # Log detailed error information
+                        if results['invalid'] > 0:
+                            for error in results.get('errors', []):
+                                logger.warning(f"CSV import error: {error}")
+                                
                         logger.info(f"Imported as coupon data: {results['valid']} valid, {results['invalid']} invalid")
                         return True
             
@@ -191,6 +208,8 @@ def import_csv_file(file_path):
             return False
     except Exception as e:
         logger.error(f"Error importing CSV file {file_path}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return False
 
 def verify_database_content():
