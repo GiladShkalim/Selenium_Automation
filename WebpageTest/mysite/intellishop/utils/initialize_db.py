@@ -24,29 +24,17 @@ def create_indexes():
     else:
         logger.error("Could not get users collection handle")
     
-    # Products collection
-    products_collection = get_collection_handle('products')
-    
-    # Add None check before trying to create indexes
-    if products_collection is not None:
-        try:
-            products_collection.create_index('category')
-            logger.info("Created product collection indexes")
-        except Exception as e:
-            logger.error(f"Error creating product indexes: {str(e)}")
-    else:
-        logger.error("Could not get products collection handle")
-        
     # Coupons collection
     coupons_collection = get_collection_handle('coupons')
     
     # Add None check before trying to create indexes
     if coupons_collection is not None:
         try:
-            # Create unique index on coupon code
-            coupons_collection.create_index('code', unique=True)
+            # Create a simple non-unique index on coupon_code for faster lookups
+            coupons_collection.create_index('coupon_code')
+            
             # Create index for finding active coupons
-            coupons_collection.create_index('date_expires')
+            coupons_collection.create_index('valid_until')
             logger.info("Created coupon collection indexes")
         except Exception as e:
             logger.error(f"Error creating coupon indexes: {str(e)}")
@@ -67,6 +55,13 @@ def import_sample_coupon_data():
             logger.warning(f"Coupon data directory not found: {data_dir}")
             return
         
+        # Look for CSV files first (since they have a simpler structure)
+        csv_path = os.path.join(data_dir, 'sample_offers.csv')
+        if os.path.exists(csv_path):
+            logger.info(f"Importing coupon data from {csv_path}")
+            results = Coupon.import_from_csv(csv_path)
+            logger.info(f"CSV import results: {results['valid']} valid, {results['invalid']} invalid, {results['new']} new, {results['updated']} updated")
+        
         # Look for JSON files
         json_path = os.path.join(data_dir, 'coupon_samples.json')
         if os.path.exists(json_path):
@@ -74,15 +69,7 @@ def import_sample_coupon_data():
             with open(json_path, 'r') as f:
                 data = json.load(f)
                 results = Coupon.import_from_json(data)
-                logger.info(f"Coupon import results: {results['valid']} valid, {results['invalid']} invalid")
-        
-        # Look for CSV files
-        csv_path = os.path.join(data_dir, 'sample_offers.csv')
-        if os.path.exists(csv_path):
-            logger.info(f"Importing coupon data from {csv_path}")
-            with open(csv_path, 'r') as f:
-                results = Coupon.import_from_csv(f)
-                logger.info(f"Coupon import results: {results['valid']} valid, {results['invalid']} invalid")
+                logger.info(f"JSON import results: {results['valid']} valid, {results['invalid']} invalid")
                 
     except Exception as e:
         logger.error(f"Error during coupon data import: {str(e)}")

@@ -1,7 +1,7 @@
 # View functions that handle HTTP requests and return responses
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .models.mongodb_models import Product, User, Coupon
+from .models.mongodb_models import User, Coupon
 import json
 from pymongo.errors import DuplicateKeyError
 from bson.objectid import ObjectId
@@ -235,34 +235,6 @@ def dashboard(request):
 
 def template(request):
     return render(request, 'intellishop/Site_template.html')
-
-def product_list(request):
-    """View to list products, optionally filtered by category"""
-    category = request.GET.get('category', None)
-    
-    if category:
-        products = Product.get_by_category(category)
-    else:
-        products = Product.find()
-    
-    # Convert ObjectId to string for JSON serialization
-    for product in products:
-        if product and '_id' in product:
-            product['_id'] = str(product['_id'])
-    
-    return JsonResponse({'products': products})
-
-def product_detail(request, product_id):
-    """View to display a specific product"""
-    product = Product.get_by_id(product_id)
-    
-    if not product:
-        return JsonResponse({'error': 'Product not found'}, status=404)
-    
-    # Convert ObjectId to string for JSON serialization
-    product['_id'] = str(product['_id'])
-    
-    return JsonResponse({'product': product})
 
 def aliexpress_coupons(request):
     code = request.GET.get('code')

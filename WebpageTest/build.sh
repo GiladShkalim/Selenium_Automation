@@ -257,32 +257,6 @@ class MongoDBModel:
     def delete_one(cls, query):
         """Delete a document from the collection"""
         return cls.get_collection().delete_one(query)
-
-# Example model for product data
-class Product(MongoDBModel):
-    collection_name = 'products'
-    
-    @classmethod
-    def create_product(cls, name, description, price, category, image_url=None):
-        """Create a new product"""
-        product_data = {
-            'name': name,
-            'description': description,
-            'price': price,
-            'category': category,
-            'image_url': image_url
-        }
-        return cls.insert_one(product_data)
-    
-    @classmethod
-    def get_by_category(cls, category):
-        """Get products by category"""
-        return cls.find({'category': category})
-    
-    @classmethod
-    def get_by_id(cls, product_id):
-        """Get a product by its ID"""
-        return cls.find_one({'_id': ObjectId(product_id)})
 EOF
         log "Created MongoDB models file at $MONGODB_MODELS_FILE"
     else

@@ -66,32 +66,6 @@ class MongoDBModel:
             return collection.delete_one(query)
         return None
 
-# Example model for product data
-class Product(MongoDBModel):
-    collection_name = 'products'
-    
-    @classmethod
-    def create_product(cls, name, description, price, category, image_url=None):
-        """Create a new product"""
-        product_data = {
-            'name': name,
-            'description': description,
-            'price': price,
-            'category': category,
-            'image_url': image_url
-        }
-        return cls.insert_one(product_data)
-    
-    @classmethod
-    def get_by_category(cls, category):
-        """Get products by category"""
-        return cls.find({'category': category})
-    
-    @classmethod
-    def get_by_id(cls, product_id):
-        """Get a product by its ID"""
-        return cls.find_one({'_id': ObjectId(product_id)})
-
 # Add this User model for MongoDB
 class User(MongoDBModel):
     collection_name = 'users'
@@ -243,129 +217,68 @@ class Coupon(MongoDBModel):
         }
         
         try:
-            # Check if we got a file path or a file object
+            # Handle file path or file object
             if isinstance(csv_file, str):
-                # If it's a string (file path), open the file
                 file_obj = open(csv_file, 'r', encoding='utf-8')
-                should_close = True
+                close_after = True
             else:
-                # If it's already a file object, use it directly
                 file_obj = csv_file
-                should_close = False
+                close_after = False
             
             try:
-                csv_reader = csv.DictReader(file_obj)
+                reader = csv.DictReader(file_obj)
                 
-                for row in csv_reader:
+                for row in reader:
                     results['total'] += 1
                     
                     try:
+                        # Direct mapping - use fields as they are in CSV
                         coupon = {}
                         
-                        # Process fields, handling missing values
+                        # Map all fields from the CSV to our document
                         for field, value in row.items():
-                            if field and value is not None:  # Modified check - allow zero values but not None
-                                field = field.strip()
-                                # For string values, strip whitespace
-                                if isinstance(value, str):
-                                    value = value.strip()
-                                
-                                # Handle field name mapping (for compatibility)
-                                if field == 'discount_type':
-                                    field = 'price_type'
-                                    
-                                if field in ['price', 'usage_limit', 'usage_count']:
-                                    try:
-                                        # Convert to number but allow zero values
-                                        coupon[field] = int(value)
-                                    except ValueError:
-                                        # Try to parse as float if it has decimal point
-                                        if isinstance(value, str) and '.' in value:
-                                            coupon[field] = float(value)
-                                        else:
-                                            coupon[field] = value
-                                elif field == 'category' and isinstance(value, str) and ',' in value:
-                                    # Split categories into an array
-                                    coupon[field] = [cat.strip() for cat in value.split(',')]
-                                elif field == 'club_name' and isinstance(value, str) and ',' in value:
-                                    # Split club_name into an array if it contains commas
-                                    coupon[field] = [club.strip() for club in value.split(',')]
-                                else:
-                                    coupon[field] = value
+                            if value:  # Only add non-empty values
+                                coupon[field] = value
                         
-                        # Map discount_type to price_type if needed
-                        if 'discount_type' in coupon and 'price_type' not in coupon:
-                            coupon['price_type'] = coupon.pop('discount_type')
+                        # Handle numeric fields
+                        numeric_fields = ['price', 'usage_limit']
+                        for field in numeric_fields:
+                            if field in coupon and coupon[field]:
+                                try:
+                                    # Convert to appropriate numeric type
+                                    if '.' in coupon[field]:
+                                        coupon[field] = float(coupon[field])
+                                    else:
+                                        coupon[field] = int(coupon[field])
+                                except ValueError:
+                                    # Keep as string if conversion fails
+                                    pass
                         
-                        # Validate required fields - consider 0 as a valid value for price
-                        required_fields = ['title', 'discount_link', 'coupon_code']
-                        # Special check for price field to allow 0 values
-                        if 'price' not in coupon and coupon.get('price', None) != 0:
-                            required_fields.append('price')
-                        
-                        missing_fields = [field for field in required_fields if field not in coupon or (coupon[field] == "" and field != 'price')]
-                        if missing_fields:
-                            raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-                        
-                        # Set defaults for missing fields
-                        if 'description' not in coupon:
-                            coupon['description'] = f"Discount offer: {coupon['title']}"
-                        
-                        if 'price_type' not in coupon:
-                            # Infer price_type from price
-                            price = str(coupon['price'])
-                            if '%' in price:
-                                coupon['price_type'] = 'percentage'
-                                # Extract numeric value if price contains %
-                                coupon['price'] = float(price.replace('%', '').strip())
-                            elif price.lower() in ['buy_one_get_one', 'bogo']:
-                                coupon['price_type'] = 'buy_one_get_one'
-                            elif price.lower() in ['free_shipping', 'shipping', 'free shipping']:
-                                coupon['price_type'] = 'Cost'
+                        # Check if we want to update by coupon_code (if it exists)
+                        if 'coupon_code' in coupon and coupon['coupon_code']:
+                            existing = cls.find_one({'coupon_code': coupon['coupon_code']})
+                            
+                            if existing:
+                                # Update existing coupon
+                                cls.update_one({'_id': existing['_id']}, coupon)
+                                results['updated'] += 1
                             else:
-                                coupon['price_type'] = 'fixed_amount'
-                        
-                        if 'terms_and_conditions' not in coupon:
-                            coupon['terms_and_conditions'] = "See provider website for details"
-                        
-                        if 'club_name' not in coupon:
-                            coupon['club_name'] = None
-                        
-                        if 'category' not in coupon:
-                            coupon['category'] = ["Consumerism"]
-                        
-                        # Handle date format for valid_until
-                        if 'valid_until' in coupon and coupon['valid_until']:
-                            # Keep as string for ISO format compatibility
-                            if 'T' not in coupon['valid_until'] and len(coupon['valid_until']) == 10:
-                                # If it's just a date without time, add time
-                                coupon['valid_until'] = f"{coupon['valid_until']}T23:59:59"
-                        
-                        # Handle usage_limit if not present
-                        if 'usage_limit' not in coupon:
-                            coupon['usage_limit'] = 0  # unlimited
-                        
-                        # Check for existing coupon with same code
-                        existing_coupon = cls.find_one({'coupon_code': coupon['coupon_code']})
-                        
-                        if existing_coupon:
-                            coupon_id = existing_coupon['_id']
-                            # Merge with existing coupon data, keeping the new values
-                            merged_coupon = {**existing_coupon, **coupon}
-                            cls.update_one({'_id': coupon_id}, merged_coupon)
-                            results['updated'] += 1
+                                # Insert new coupon
+                                cls.insert_one(coupon)
+                                results['new'] += 1
                         else:
-                            # Insert new coupon
+                            # No coupon_code field, just insert as new
                             cls.insert_one(coupon)
                             results['new'] += 1
-                            
+                        
                         results['valid'] += 1
                         
                     except Exception as e:
                         results['invalid'] += 1
-                        results['errors'].append(f"Coupon {row.get('coupon_code', 'unknown')}: {str(e)}")
+                        results['errors'].append(f"Row {results['total']}: {str(e)}")
+                        
             finally:
-                if should_close:
+                if close_after:
                     file_obj.close()
                     
         except Exception as e:

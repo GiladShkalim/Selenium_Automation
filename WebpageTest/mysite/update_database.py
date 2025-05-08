@@ -33,8 +33,8 @@ try:
     django.setup()
     
     # Import models after Django setup
-    from intellishop.models.mongodb_models import Coupon, Product, User
-    from intellishop.utils.mongodb_utils import get_db_handle
+    from intellishop.models.mongodb_models import Coupon, User
+    from intellishop.utils.mongodb_utils import get_db_handle, get_collection_handle
 except ImportError as e:
     logger.error(f"Failed to import Django modules: {e}")
     sys.exit(1)
@@ -224,24 +224,26 @@ def verify_database_content():
         active_coupons = 0
         expired_coupons = 0
         
-        # Use the correct method to count documents
-        collection = Coupon.get_collection()
-        if collection:
-            active_coupons = collection.count_documents({
+        coupons_collection = get_collection_handle('coupons')
+        if coupons_collection is not None:  # Properly check for None
+            active_coupons = coupons_collection.count_documents({
                 '$or': [
                     {'valid_until': {'$gt': current_date}},
                     {'valid_until': None}
                 ]
             })
             
-            expired_coupons = collection.count_documents({
+            expired_coupons = coupons_collection.count_documents({
                 'valid_until': {'$lte': current_date}
             })
+        else:
+            logger.error("Could not get coupons collection handle")
+            return False
         
         logger.info(f"Coupon stats: {active_coupons} active, {expired_coupons} expired")
         return True
     except Exception as e:
-        logger.error(f"Error verifying database content: {e}")
+        logger.error(f"Error verifying database content: {str(e)}")
         return False
 
 def main():
