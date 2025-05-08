@@ -6,7 +6,8 @@
 # === USAGE INSTRUCTIONS ===
 # How to run:
 #   1. Make this script executable: chmod +x build.sh
-#   2. Run the script in WSL terminal: ./build.sh
+#   2. Run the script in WSL terminal: ./build.sh [1]
+#      - Add "1" parameter to update the database with sample data
 #
 # How to close:
 #   - Press Ctrl+C in the terminal to stop the server
@@ -474,6 +475,19 @@ python manage.py collectstatic --noinput || log "Warning: Static file collection
 # Check for Django configuration errors
 log "Checking for configuration errors"
 python manage.py check --deploy || log "Warning: Django deployment checks failed"
+
+# Check if database update was requested
+if [ "$1" = "1" ]; then
+    log "Database update requested. Running update script..."
+    python update_database.py
+    if [ $? -ne 0 ]; then
+        log "⚠️ Database update failed!"
+    else
+        log "✅ Database updated successfully!"
+    fi
+else
+    log "Skipping database update. Run with './build.sh 1' to update the database."
+fi
 
 # Start the Django development server
 log "Please wait for Django to start on port $PORT"
