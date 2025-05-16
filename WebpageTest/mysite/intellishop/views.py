@@ -315,8 +315,10 @@ def profile_view(request):
         
         if action == 'update_username':
             new_username = request.POST.get('username')
-            # Add validation and email verification here
-            User.update_one({'_id': ObjectId(user_id)}, {'$set': {'username': new_username}})
+            User.update_one(
+                {'_id': ObjectId(user_id)}, 
+                {'username': new_username}
+            )
             
         elif action == 'update_password':
             current_password = request.POST.get('current_password')
@@ -324,8 +326,10 @@ def profile_view(request):
             confirm_password = request.POST.get('confirm_password')
             
             if user.get('password') == current_password and new_password == confirm_password:
-                # Add email verification here
-                User.update_one({'_id': ObjectId(user_id)}, {'$set': {'password': new_password}})
+                User.update_one(
+                    {'_id': ObjectId(user_id)}, 
+                    {'password': new_password}
+                )
             
         elif action == 'delete_account':
             # Add email verification here
