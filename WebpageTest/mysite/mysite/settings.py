@@ -69,7 +69,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'intellishop.context_processors.data_directory',
+                #'intellishop.context_processors.data_directory',
             ],
         },
     },
@@ -225,30 +225,3 @@ if not os.path.exists(DATA_DIR):
         if os.path.exists(alt_path):
             DATA_DIR = alt_path
             break
-
-# Create configuration for templating system to use this path
-TEMPLATES[0]['OPTIONS']['context_processors'].append('intellishop.context_processors.data_directory')
-
-def data_directory(request):
-    """
-    Adds data directory path to the template context
-    """
-    base_dir = settings.BASE_DIR
-    data_dir = os.path.join(base_dir, 'intellishop', 'data')
-    
-    # Fallback to alternative locations if the primary doesn't exist
-    if not os.path.exists(data_dir):
-        alternative_paths = [
-            os.path.join(base_dir, 'data'),
-            os.path.join(os.path.dirname(base_dir), 'intellishop', 'data')
-        ]
-        
-        for alt_path in alternative_paths:
-            if os.path.exists(alt_path):
-                data_dir = alt_path
-                break
-    
-    return {
-        'DATA_DIR': data_dir,
-        'DATA_DIR_EXISTS': os.path.exists(data_dir),
-    }
