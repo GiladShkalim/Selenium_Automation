@@ -148,36 +148,62 @@ def process_coupon_data(coupon_data):
     
     return coupon_data
 
-def import_json_file(file_path):
-    """Import data from a JSON file"""
+def import_coupons_from_json(file_path):
+    """Import coupons from a JSON file"""
+    filename = os.path.basename(file_path)
+    logger.info(f"Importing coupons from JSON file: {file_path}")
     try:
-        logger.info(f"Importing data from JSON file: {file_path}")
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-            
-            # Determine type of data based on file name or content
-            if 'coupon_samples.json' in file_path:
-                # Handle coupon data specifically
-                results = Coupon.import_from_json(data)
-                logger.info(f"Imported coupon data: {results['valid']} valid, {results['invalid']} invalid")
-                return True
-            else:
-                # Look for array of objects with identifiable fields
-                if isinstance(data, list) and len(data) > 0:
-                    sample = data[0]
-                    if 'title' in sample and ('price' in sample or 'price_type' in sample or 'coupon_code' in sample):
-                        results = Coupon.import_from_json(data)
-                        logger.info(f"Imported as coupon data: {results['valid']} valid, {results['invalid']} invalid")
-                        return True
+        with open(file_path, 'r', encoding='utf-8') as file:
+            json_data = json.load(file)
+        
+        results = Coupon.import_from_json(json_data)
+        
+        # Track deprecated IDs
+        deprecated_ids = []
+        for detail in results.get('details', []):
+            if 'error' in detail and detail.get('id'):
+                deprecated_ids.append(detail.get('id', 'unknown'))
+        
+        # Log summary
+        total = results.get('success', 0) + len(results.get('errors', []))
+        logger.info(f"File Summary for {filename}:")
+        logger.info(f"  - Total items processed: {total}")
+        logger.info(f"  - Successfully imported: {results['success']}")
+        logger.info(f"  - Deprecated items: {len(results.get('errors', []))}")
+        
+        if deprecated_ids:
+            logger.info(f"  - Deprecated IDs: {', '.join(deprecated_ids[:20])}")
+            if len(deprecated_ids) > 20:
+                logger.info(f"    ... and {len(deprecated_ids) - 20} more")
+        
+        # Original logging can remain
+        logger.info(f"Successfully imported {results['success']} coupons from {filename}")
+        
+        if results['warnings']:
+            logger.warning(f"Encountered {len(results['warnings'])} warnings while importing coupons from {filename}:")
+            for warning in results['warnings'][:10]:  # Limit to first 10 warnings
+                logger.warning(f"  - {warning}")
                 
-                logger.warning(f"Unknown data format in {file_path}. Skipping.")
-                return False
+            if len(results['warnings']) > 10:
+                logger.warning(f"  ... and {len(results['warnings']) - 10} more warnings")
+                
+        # Log detailed information if not too many
+        if results['details'] and len(results['details']) <= 50:
+            logger.info(f"Detailed import information for {filename}:")
+            for detail in results['details']:
+                if 'error' in detail:
+                    logger.error(f"  Entry #{detail['entry']} '{detail['title']}': {detail['error']}")
+                elif 'warning' in detail:
+                    logger.warning(f"  Entry #{detail['entry']} '{detail['title']}': {detail['warning']}")
+        
+        return results['success'] > 0
     except Exception as e:
-        logger.error(f"Error importing JSON file {file_path}: {str(e)}")
+        logger.error(f"Failed to import coupons from JSON file {filename}: {str(e)}")
         return False
 
 def import_csv_file(file_path):
     """Import data from a CSV file"""
+    filename = os.path.basename(file_path)
     try:
         logger.info(f"Importing data from CSV file: {file_path}")
         
@@ -187,6 +213,28 @@ def import_csv_file(file_path):
                 # Add more detailed logging to debug import issues
                 logger.info(f"Starting CSV import from {file_path}")
                 results = Coupon.import_from_csv(f)
+                
+                # Track deprecated IDs
+                deprecated_ids = []
+                for error in results.get('detailed_errors', []):
+                    if isinstance(error, dict) and 'id' in error:
+                        deprecated_ids.append(error['id'])
+                    elif isinstance(error, dict) and 'row' in error:
+                        deprecated_ids.append(f"row-{error['row']}")
+                
+                # Log summary for this file
+                total = results.get('valid', 0) + results.get('invalid', 0)
+                logger.info(f"File Summary for {filename}:")
+                logger.info(f"  - Total items processed: {total}")
+                logger.info(f"  - Successfully imported: {results.get('valid', 0)}")
+                logger.info(f"  - Deprecated items: {results.get('invalid', 0)}")
+                
+                if deprecated_ids:
+                    logger.info(f"  - Deprecated IDs: {', '.join(deprecated_ids[:20])}")
+                    if len(deprecated_ids) > 20:
+                        logger.info(f"    ... and {len(deprecated_ids) - 20} more")
+                
+                # Original logging remains
                 if results['invalid'] > 0:
                     for error in results.get('errors', []):
                         logger.warning(f"CSV import error: {error}")
@@ -213,11 +261,30 @@ def import_csv_file(file_path):
                         logger.info("CSV file appears to contain coupon data, importing...")
                         results = Coupon.import_from_csv(f)
                         
-                        # Log detailed error information
+                        # Track deprecated IDs
+                        deprecated_ids = []
+                        for error in results.get('detailed_errors', []):
+                            if isinstance(error, dict) and 'id' in error:
+                                deprecated_ids.append(error['id'])
+                            elif isinstance(error, dict) and 'row' in error:
+                                deprecated_ids.append(f"row-{error['row']}")
+                        
+                        # Log summary for this file
+                        total = results.get('valid', 0) + results.get('invalid', 0)
+                        logger.info(f"File Summary for {filename}:")
+                        logger.info(f"  - Total items processed: {total}")
+                        logger.info(f"  - Successfully imported: {results.get('valid', 0)}")
+                        logger.info(f"  - Deprecated items: {results.get('invalid', 0)}")
+                        
+                        if deprecated_ids:
+                            logger.info(f"  - Deprecated IDs: {', '.join(deprecated_ids[:20])}")
+                            if len(deprecated_ids) > 20:
+                                logger.info(f"    ... and {len(deprecated_ids) - 20} more")
+                        
+                        # Original logging
                         if results['invalid'] > 0:
                             for error in results.get('errors', []):
                                 logger.warning(f"CSV import error: {error}")
-                                
                         logger.info(f"Imported as coupon data: {results['valid']} valid, {results['invalid']} invalid")
                         return True
             
@@ -242,7 +309,7 @@ def verify_database_content():
         expired_coupons = 0
         
         coupons_collection = get_collection_handle('coupons')
-        if coupons_collection:
+        if coupons_collection is not None:
             # Count active coupons
             active_coupons = coupons_collection.count_documents({
                 '$or': [
@@ -286,7 +353,7 @@ def main():
     # Process all JSON files
     json_success = True
     for json_file in json_files:
-        file_result = import_json_file(json_file)
+        file_result = import_coupons_from_json(json_file)
         json_success = json_success and file_result
     
     # Process all CSV files
