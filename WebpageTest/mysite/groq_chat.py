@@ -12,6 +12,7 @@ from constants import (
     get_consumer_status_string,
     get_discount_type_string
 )
+import glob
 
 # Use the imported constants and helper functions
 CATEGORIES = get_categories_string()
@@ -57,6 +58,9 @@ Instructions for processing fields:
 
 # Load environment variables
 load_dotenv()
+
+# Near the top of the file, after loading environment variables
+DEFAULT_DATA_DIR = os.environ.get('DISCOUNT_DATA_DIR', 'data')
 
 current_model_index = 0
 
@@ -185,10 +189,79 @@ def update_discounts_file(input_file_path: str, output_file_path: str) -> None:
     
     print(f"Processing complete: {successful_count} discounts saved to {output_file_path}.")
 
-if __name__ == "__main__":
-    # Set the paths to your input and output files
-    input_file_path = "hot_discounts.json"
-    output_file_path = "enhanced_discounts.json"
+def find_json_files(data_dir_path=None):
+    """Find all JSON files in the data directory and its subdirectories
     
-    # Process and create the enhanced file
-    update_discounts_file(input_file_path, output_file_path) 
+    Args:
+        data_dir_path: Optional path to the data directory. If None, will use default locations.
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Use provided path if available
+    if data_dir_path and os.path.exists(data_dir_path):
+        data_dir = data_dir_path
+        print(f"Using provided data directory: {data_dir}")
+    else:
+        # Use the global default with fallbacks
+        data_dir = os.path.join(base_dir, DEFAULT_DATA_DIR)
+        
+        # Add fallback paths if the primary one doesn't exist
+        if not os.path.exists(data_dir):
+            alternative_paths = [
+                os.path.join(base_dir, 'intellishop', 'data'),
+                os.path.join(os.path.dirname(base_dir), 'data'),  # One level up
+                os.path.join(base_dir, 'mysite', 'data')
+            ]
+            
+            for alt_path in alternative_paths:
+                if os.path.exists(alt_path):
+                    data_dir = alt_path
+                    print(f"Using alternative data directory: {data_dir}")
+                    break
+            else:
+                print(f"Error: Could not find a valid data directory.")
+                return []
+    
+    print(f"Scanning for JSON files in {data_dir}")
+    
+    json_files = []
+    # Walk through directory and its subdirectories
+    for root, dirs, files in os.walk(data_dir):
+        for file in files:
+            if file.lower().endswith('.json'):
+                file_path = os.path.join(root, file)
+                json_files.append(file_path)
+    
+    print(f"Found {len(json_files)} JSON files")
+    
+    return json_files
+
+def process_json_files(data_dir_path=None):
+    """Process all JSON files found in the data directory
+    
+    Args:
+        data_dir_path: Optional path to the data directory.
+    """
+    json_files = find_json_files(data_dir_path)
+    
+    if not json_files:
+        print("No JSON files found to process.")
+        return
+    
+    for input_file_path in json_files:
+        # Create output file path based on input file name
+        file_name = os.path.basename(input_file_path)
+        file_dir = os.path.dirname(input_file_path)
+        output_file_name = f"enhanced_{file_name}"
+        output_file_path = os.path.join(file_dir, output_file_name)
+        
+        print(f"\nProcessing file: {file_name}")
+        print(f"Output will be saved to: {output_file_name}")
+        
+        # Process the file
+        update_discounts_file(input_file_path, output_file_path)
+
+if __name__ == "__main__":
+    # You can set a custom data directory here or pass None to use defaults
+    data_directory = None  # Replace with your variable path if needed
+    process_json_files(data_directory)

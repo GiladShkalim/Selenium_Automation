@@ -84,8 +84,6 @@ VENV_DIR="venv"
 ENV_FILE=".env"
 SCRIPT_FILE="groq_chat.py"
 REQUIREMENTS_FILE="requirements.txt"
-INPUT_FILE="hot_discounts.json"
-OUTPUT_FILE="enhanced_discounts.json"
 
 # Cleanup function
 cleanup() {
@@ -142,20 +140,20 @@ EOF
     log "✅ Groq API key found."
 }
 
-# Verify input file exists
-verify_input_file() {
-    log "Checking for input data file..."
+# Validate script existence
+validate_script() {
+    log "Validating script file..."
     
-    if [ ! -f "$INPUT_FILE" ]; then
-        error "Input file $INPUT_FILE not found. Please create this file and run again."
+    if [ ! -f "$SCRIPT_FILE" ]; then
+        error "Script file $SCRIPT_FILE not found. Please check the file path."
     fi
     
-    # Check if input file is valid JSON
-    if ! python3 -c "import json; json.load(open('$INPUT_FILE'))" 2>/dev/null; then
-        error "Input file $INPUT_FILE is not valid JSON. Please check the file format."
+    # Validate Python script
+    if ! python -c "import ast; ast.parse(open('$SCRIPT_FILE').read())" 2>/dev/null; then
+        error "Python script $SCRIPT_FILE has syntax errors. Please fix the errors and run again."
     fi
     
-    log "✅ Input file $INPUT_FILE is valid."
+    log "✅ Script validation passed."
 }
 
 # Set up trap for cleanup on script exit
@@ -251,26 +249,11 @@ fi
 # Verify the Groq API key
 verify_api_key
 
-# Verify input file
-verify_input_file
-
-# Check if the script file exists
-if [ ! -f "$SCRIPT_FILE" ]; then
-    error "Script file $SCRIPT_FILE not found."
-fi
-
-# Run a quick validation test of the script
-log "Validating Python script syntax..."
-if ! python -m py_compile "$SCRIPT_FILE"; then
-    error "Syntax error in $SCRIPT_FILE. Please check the script."
-fi
-log "✅ Script validation passed."
+# Validate script
+validate_script
 
 # Run the script
 log "Starting data enhancement process..."
-if [ -f "$OUTPUT_FILE" ]; then
-    log "Warning: Output file $OUTPUT_FILE already exists. It will be overwritten."
-fi
 
 python "$SCRIPT_FILE" &
 SCRIPT_PID=$!
@@ -282,18 +265,10 @@ wait $SCRIPT_PID 2>/dev/null
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then
-    if [ -f "$OUTPUT_FILE" ]; then
-        log "✅ Enhancement process completed successfully!"
-        log "Enhanced data saved to $OUTPUT_FILE"
-        
-        # Count items in output file
-        ITEM_COUNT=$(python -c "import json; print(len(json.load(open('$OUTPUT_FILE'))))" 2>/dev/null)
-        if [ -n "$ITEM_COUNT" ]; then
-            log "Processed $ITEM_COUNT items."
-        fi
-    else
-        log "⚠️ Process completed but output file $OUTPUT_FILE was not created."
-    fi
+    log "✅ Enhancement process completed successfully!"
+    
+    # We can't check for specific files anymore, so just report success
+    log "Enhanced files have been saved in the data directory."
 else
     log "❌ Enhancement process failed with exit code $EXIT_CODE."
 fi
