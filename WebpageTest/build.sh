@@ -382,26 +382,106 @@ fi
 
 log "Successfully activated virtual environment: $VIRTUAL_ENV"
 
+# Loading spinner function
+show_spinner() {
+    local pid=$1
+    local message=$2
+    local spin='-\|/'
+    local i=0
+    
+    # Save cursor position and hide cursor
+    tput sc
+    tput civis
+    
+    echo -n "$message "
+    
+    while kill -0 $pid 2>/dev/null; do
+        i=$(( (i+1) % 4 ))
+        printf "\r$message ${spin:$i:1}"
+        sleep 0.1
+    done
+    
+    # Clear line, restore cursor position and show cursor
+    printf "\r\033[K$message Complete!"
+    echo
+    tput cnorm
+}
+
+# Progress bar function
+show_progress_bar() {
+    local pid=$1
+    local message=$2
+    local width=40
+    
+    # Save cursor position and hide cursor
+    tput sc
+    tput civis
+    
+    echo -n "$message "
+    
+    local i=0
+    while kill -0 $pid 2>/dev/null; do
+        i=$(( (i+1) % (width+1) ))
+        # Create the progress bar
+        printf "\r$message ["
+        printf "%${i}s" | tr ' ' '='
+        printf "%$(( width - i ))s" | tr ' ' ' '
+        printf "] %d%%" $(( (i * 100) / width ))
+        sleep 0.1
+    done
+    
+    # Show completed progress bar
+    printf "\r$message ["
+    printf "%${width}s" | tr ' ' '='
+    printf "] 100%%"
+    echo
+    tput cnorm
+}
+
 # Update pip to latest version
 log "Updating pip to latest version"
-python -m pip install --upgrade pip || log "Warning: Failed to upgrade pip"
+python -m pip install --upgrade pip > /dev/null 2>&1 &
+PIP_PID=$!
+show_progress_bar $PIP_PID "Updating pip"
+wait $PIP_PID
+if [ $? -ne 0 ]; then
+    log "Warning: Failed to upgrade pip"
+fi
 
 # Install dependencies from requirements file if it exists
 if [ -f "$REQUIREMENTS_FILE" ]; then
     log "Installing dependencies from $REQUIREMENTS_FILE"
-    python -m pip install -r $REQUIREMENTS_FILE || error "Failed to install requirements"
+    python -m pip install -r $REQUIREMENTS_FILE > /dev/null 2>&1 &
+    PIP_PID=$!
+    show_progress_bar $PIP_PID "Installing dependencies"
+    wait $PIP_PID
+    if [ $? -ne 0 ]; then
+        error "Failed to install requirements"
+    fi
 else
     # Install Django if not already installed
     if ! python -m pip show django &> /dev/null; then
         log "Installing Django"
-        python -m pip install django || error "Failed to install Django"
+        python -m pip install django > /dev/null 2>&1 &
+        PIP_PID=$!
+        show_progress_bar $PIP_PID "Installing Django"
+        wait $PIP_PID
+        if [ $? -ne 0 ]; then
+            error "Failed to install Django"
+        fi
     else
         log "Django already installed in virtual environment"
     fi
     
     # Install MongoDB dependencies
     log "Installing PyMongo and dnspython"
-    python -m pip install pymongo dnspython || log "Warning: Failed to install MongoDB dependencies"
+    python -m pip install pymongo dnspython > /dev/null 2>&1 &
+    PIP_PID=$!
+    show_progress_bar $PIP_PID "Installing MongoDB dependencies"
+    wait $PIP_PID
+    if [ $? -ne 0 ]; then
+        log "Warning: Failed to install MongoDB dependencies"
+    fi
 fi
 
 # Set up MongoDB configuration
