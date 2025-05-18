@@ -94,15 +94,11 @@ def process_discount_with_groq(discount: Dict[str, Any], max_retries: int = 2) -
     """
     global current_model_index  # Use the global variable
     
-    # List of available models to cycle through when hitting rate limits
     models = ["llama3-70b-8192", "llama3-8b-8192", "llama-3.1-8b-instant", 
               "llama-3.3-70b-versatile", "gemma2-9b-it"]
-    # current_model_index now defined globally instead of here
     
-    # System message with schema description and instructions
     system_message = MESSAGE_TEMPLATE
 
-    # User message with the discount object
     user_message = f"Please enhance this discount object according to the instructions:\n{json.dumps(discount, indent=2, ensure_ascii=False)}"
     
     retry_count = 0
@@ -118,7 +114,6 @@ def process_discount_with_groq(discount: Dict[str, Any], max_retries: int = 2) -
                 ],
                 model=current_model,
                 max_tokens=2048,
-                # Enable JSON Mode by setting the response format
                 response_format={"type": "json_object"}
             )
             
@@ -144,10 +139,8 @@ def process_discount_with_groq(discount: Dict[str, Any], max_retries: int = 2) -
                 time.sleep(2)  # Add a slightly longer delay before retrying
             else:
                 logger.info(f"{error_message}\nMax retries exceeded. Using original discount.")
-                # If all retries fail, return the original discount
                 return discount
     
-    # This line should never be reached, but included for completeness
     return discount
 
 def update_discounts_file(input_file_path: str, output_file_path: str) -> None:
