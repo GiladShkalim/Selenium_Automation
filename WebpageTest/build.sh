@@ -29,6 +29,7 @@ PORT=8000
 VENV_DIR=".venv"
 PROJECT_DIR="mysite"
 ENV_FILE=".env"
+ABSOLUTE_ENV_FILE="$(pwd)/$ENV_FILE"  # Store absolute path to .env file
 
 # Cleanup function
 cleanup() {
@@ -52,17 +53,6 @@ cleanup() {
         if ps -p $SERVER_PID > /dev/null 2>&1; then
             log "Server still running, forcing termination"
             kill -9 $SERVER_PID 2>/dev/null || true
-        fi
-    fi
-    
-    # Check if port is still in use
-    if check_port_in_use $PORT; then
-        log "Warning: Port $PORT is still in use. Attempting to free it..."
-        # Find process using the port and kill it
-        pid=$(lsof -t -i:$PORT 2>/dev/null || true)
-        if [ -n "$pid" ]; then
-            log "Killing process $pid that's using port $PORT"
-            kill -9 $pid 2>/dev/null || true
         fi
     fi
     
@@ -93,7 +83,7 @@ setup_mongodb_config() {
         log "Creating environment configuration file..."
         cat > "$ENV_FILE" << EOF
 # MongoDB Configuration
-MONGODB_URI=mongodb+srv://giladshkalim:Gilad1212@intellidb.yuauj7i.mongodb.net/?retryWrites=true&w=majority&appName=IntelliDB
+MONGODB_URI=
 MONGODB_NAME=IntelliDB
 
 # Django Settings
@@ -293,6 +283,66 @@ EOF
         log "Created MongoDB test command at $TEST_COMMAND_FILE"
     else
         log "MongoDB test command already exists"
+    fi
+}
+
+# Groq API Enhancement Functions
+verify_api_key() {
+    log "Verifying Groq API key..."
+    
+    # Check if .env file exists
+    if [ ! -f "$ABSOLUTE_ENV_FILE" ]; then
+        log "❌ $ABSOLUTE_ENV_FILE file not found."
+        log "Creating template .env file..."
+        
+        # Create template .env file
+        cat > "$ABSOLUTE_ENV_FILE" << EOF
+GROQ_API_KEY=your_api_key_here
+EOF
+        
+        error "Please update the .env file with your actual Groq API key and run again."
+    fi
+    
+    # Load and check API key
+    source "$ABSOLUTE_ENV_FILE" 2>/dev/null
+    
+    if [ -z "$GROQ_API_KEY" ] || [ "$GROQ_API_KEY" = "your_api_key_here" ]; then
+        error "Invalid or missing Groq API key in $ABSOLUTE_ENV_FILE. Please update it."
+    fi
+    
+    log "✅ Groq API key found."
+}
+
+validate_script() {
+    local SCRIPT_FILE="$1"
+    
+    if [ ! -f "$SCRIPT_FILE" ]; then
+        error "Script file $SCRIPT_FILE not found in $(pwd). Please check the file path."
+    fi
+    
+    log "✅ Script validation passed."
+}
+
+run_enhancement_process() {
+    local SCRIPT_FILE="$1"
+    
+    # Run the script
+    log "Starting data enhancement process..."
+
+    python "$SCRIPT_FILE" &
+    local ENHANCEMENT_PID=$!
+
+    log "Process running with PID: $ENHANCEMENT_PID"
+
+    # Wait for the script to complete
+    wait $ENHANCEMENT_PID 2>/dev/null
+    local EXIT_CODE=$?
+
+    if [ $EXIT_CODE -eq 0 ]; then
+        log "✅ Enhancement process completed successfully!"
+        log "Enhanced files have been saved in the data directory."
+    else
+        log "❌ Enhancement process failed with exit code $EXIT_CODE."
     fi
 }
 
@@ -500,24 +550,6 @@ cd $PROJECT_DIR || error "Failed to change to project directory"
 # Test MongoDB connection
 test_mongodb_connection || log "Warning: MongoDB connection test failed. The application may not function correctly."
 
-# Check if port is already in use
-if check_port_in_use $PORT; then
-    log "Warning: Port $PORT is already in use"
-    pid=$(lsof -i:$PORT 2>/dev/null || true)
-    if [ -n "$pid" ]; then
-        log "Process $pid is using port $PORT"
-        read -p "Do you want to kill this process and free the port? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            log "Killing process $pid"
-            kill -9 $pid || log "Failed to kill process $pid"
-            sleep 2
-        else
-            error "Port $PORT is in use. Please free the port or use a different one."
-        fi
-    fi
-fi
-
 # Run database migrations if needed
 log "Running database migrations"
 python manage.py migrate || log "Warning: Database migration failed"
@@ -539,15 +571,34 @@ if [ "$1" = "1" ]; then
     else
         log "✅ Database updated successfully!"
     fi
+elif [ "$1" = "2" ]; then
+    # Define Groq-specific variables
+    GROQ_SCRIPT_FILE="groq_chat.py"
+    GROQ_REQUIREMENTS_FILE="requirements.txt"
+    
+    log "Running AI enhancement process..."
+    
+    # Verify the Groq API key
+    verify_api_key
+    
+    # Validate script files
+    validate_script "$GROQ_SCRIPT_FILE" "$GROQ_REQUIREMENTS_FILE"
+    
+    # Run the enhancement process
+    run_enhancement_process "$GROQ_SCRIPT_FILE"
+    
+    # Then run the database update script
+    log "Running database update script..."
+    python update_database.py
+    if [ $? -ne 0 ]; then
+        log "⚠️ Database update failed!"
+    else
+        log "✅ Database updated successfully!"
+    fi
 else
-    log "Skipping database update. Run with './build.sh 1' to update the database."
+    log "Skipping database update. Run with './build.sh 1' to update the database or './build.sh 2' for AI enhancement and database update."
 fi
 
-# Start the Django development server
-log "Please wait for Django to start on port $PORT"
-
-# Run Django server in background so we can capture its PID
-python manage.py runserver 0.0.0.0:$PORT &
 SERVER_PID=$!
 
 log "Server running with PID: $SERVER_PID"
@@ -556,24 +607,3 @@ log "Server running with PID: $SERVER_PID"
 wait $SERVER_PID 2>/dev/null || true
 
 # The cleanup function will be called automatically through the trap 
-
-# Add this function near the top of the script
-check_port_in_use() {
-    local port=$1
-    
-    # Try different commands based on what's available
-    if command -v netstat &>/dev/null; then
-        netstat -tuln | grep ":$port " > /dev/null 2>&1
-        return $?
-    elif command -v ss &>/dev/null; then
-        ss -tuln | grep ":$port " > /dev/null 2>&1
-        return $?
-    elif command -v lsof &>/dev/null; then
-        lsof -i :$port > /dev/null 2>&1
-        return $?
-    else
-        # If no tool is available, we can't check - assume it's not in use
-        log "Warning: Cannot check if port is in use (netstat, ss, and lsof not found)"
-        return 1
-    fi
-} 

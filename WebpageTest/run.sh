@@ -65,8 +65,8 @@ fi
 
 # Make the script executable
 chmod +x build.sh
-if [ -f "exes/enhance_data.sh" ]; then
-    chmod +x exes/enhance_data.sh
+if [ -f "mysite/enhance_data.sh" ]; then
+    chmod +x mysite/enhance_data.sh
 fi
 
 # Display menu and handle selection

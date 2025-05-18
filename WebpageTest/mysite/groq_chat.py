@@ -6,7 +6,7 @@ import logging
 import time
 from typing import Dict, List, Any
 import re
-from constants import (
+from intellishop.models.constants import (
     JSON_SCHEMA, 
     get_categories_string,
     get_consumer_status_string,
@@ -75,18 +75,11 @@ logger = logging.getLogger("GroqEnhancer")
 
 # Ensure constants.py exists in the same directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONSTANTS_PATH = os.path.join(SCRIPT_DIR, 'constants.py')
+CONSTANTS_PATH = os.path.join(SCRIPT_DIR, 'intellishop', 'models', 'constants.py')
 
 if not os.path.exists(CONSTANTS_PATH):
     logger.error(f"constants.py not found at {CONSTANTS_PATH}. Please ensure this file exists.")
     sys.exit(1)
-
-from constants import (
-    JSON_SCHEMA, 
-    get_categories_string,
-    get_consumer_status_string,
-    get_discount_type_string
-)
 
 def process_discount_with_groq(discount: Dict[str, Any], max_retries: int = 2) -> Dict[str, Any]:
     """
@@ -229,9 +222,12 @@ def find_json_files(data_dir_path=None):
         if not os.path.exists(data_dir):
             alternative_paths = [
                 os.path.join(base_dir, '..', 'data'),
-                os.path.join(base_dir, 'data')
+                os.path.join(base_dir, 'data'),
+                os.path.join(base_dir, 'intellishop', 'data'),
+                os.path.join(base_dir, 'mysite', 'intellishop', 'data')
             ]
             
+            # Check if any alternative paths exist
             for alt_path in alternative_paths:
                 if os.path.exists(alt_path):
                     data_dir = alt_path

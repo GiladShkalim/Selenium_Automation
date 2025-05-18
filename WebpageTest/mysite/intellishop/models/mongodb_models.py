@@ -106,7 +106,7 @@ class User(MongoDBModel):
         """Create a new user in MongoDB"""
         user_data = {
             'username': username,
-            'password': password,  # In production, hash this password
+            'password': password,  # In production, hash this
             'email': email,
             'status': status,
             'age': age,

@@ -1,6 +1,6 @@
 """
 Shared constants and schemas used throughout the application.
-This module serves as truth for data structures and enumerations.
+This module serves as the single source of truth for data structures and enumerations.
 """
 
 # JSON schema for discount objects
