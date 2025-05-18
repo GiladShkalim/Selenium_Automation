@@ -116,18 +116,35 @@ def find_data_files():
     return json_files, csv_files
 
 def process_coupon_data(coupon_data):
-    """Custom pre-validation processing for coupon data"""
-    # Normalize data fields
-    if 'code' in coupon_data:
-        coupon_data['code'] = coupon_data['code'].strip().upper()
-    
+    """Process coupon data to match the new schema requirements"""
     # Add computed fields
     if 'date_created' not in coupon_data:
         coupon_data['date_created'] = datetime.now().isoformat()
     
+    # Ensure price is an integer
+    if 'price' in coupon_data and not isinstance(coupon_data['price'], int):
+        try:
+            # Handle price as dictionary (legacy format)
+            if isinstance(coupon_data['price'], dict) and 'amount' in coupon_data['price']:
+                coupon_data['price'] = int(coupon_data['price']['amount'])
+            else:
+                # Convert string to integer
+                price_str = str(coupon_data['price']).replace('%', '').strip()
+                coupon_data['price'] = int(float(price_str))
+        except (ValueError, TypeError):
+            coupon_data['price'] = 0
+    
+    # Infer discount_type if not present
+    if 'discount_type' not in coupon_data and 'price' in coupon_data:
+        price_str = str(coupon_data.get('price', ''))
+        if '%' in price_str:
+            coupon_data['discount_type'] = 'percentage'
+        else:
+            coupon_data['discount_type'] = 'fixed_amount'
+    
     # Add business logic validations
-    if coupon_data.get('discount_type') == 'percent' and coupon_data.get('amount', 0) > 50:
-        logger.warning(f"High discount detected: {coupon_data['code']} with {coupon_data['amount']}%")
+    if coupon_data.get('discount_type') == 'percentage' and coupon_data.get('price', 0) > 50:
+        logger.warning(f"High discount percentage detected: {coupon_data.get('coupon_code', 'unknown')} with {coupon_data.get('price')}%")
     
     return coupon_data
 
@@ -216,7 +233,7 @@ def verify_database_content():
     """Verify that the database was updated successfully"""
     try:
         # Count documents in collections
-        current_date = datetime.now()
+        current_date = datetime.now().isoformat()
         
         logger.info("Verifying database content...")
         
@@ -225,16 +242,20 @@ def verify_database_content():
         expired_coupons = 0
         
         coupons_collection = get_collection_handle('coupons')
-        if coupons_collection is not None:  # Properly check for None
+        if coupons_collection:
+            # Count active coupons
             active_coupons = coupons_collection.count_documents({
                 '$or': [
-                    {'valid_until': {'$gt': current_date}},
-                    {'valid_until': None}
+                    {'valid_until': {'$exists': False}},
+                    {'valid_until': None},
+                    {'valid_until': ''},
+                    {'valid_until': {'$gt': current_date}}
                 ]
             })
             
+            # Count expired coupons
             expired_coupons = coupons_collection.count_documents({
-                'valid_until': {'$lte': current_date}
+                'valid_until': {'$exists': True, '$ne': None, '$ne': '', '$lte': current_date}
             })
         else:
             logger.error("Could not get coupons collection handle")
