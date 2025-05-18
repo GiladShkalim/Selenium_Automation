@@ -47,8 +47,8 @@ Run the interactive setup menu and select your preferred installation option:
 
 This will display a menu with the following options:
 1. **Setup only** - Basic application setup
-2. **Setup -> data validation and insert** - Setup and populate with sample data
-3. **Setup -> AI enhancement -> data validation and insert** - Setup with AI-enhanced product data
+2. **Setup -> data validation and insert** -> Setup and populate with sample data
+3. **Setup -> AI enhancement -> data validation and insert** -> Setup with AI-enhanced product data
 
 Access the application at http://localhost:8000 after setup completes.
 
