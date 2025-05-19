@@ -71,8 +71,17 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S' 
 )
 logger = logging.getLogger("GroqEnhancer")
-log_level = os.environ.get('LOG_LEVEL', 'WARNING').upper()
-logger.setLevel(getattr(logging, log_level, logging.WARNING))
+log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()  # Default to INFO instead of WARNING
+logger.setLevel(getattr(logging, log_level, logging.INFO))
+
+# Add configuration for httpx logger to suppress successful requests
+httpx_logger = logging.getLogger("httpx")
+httpx_logger.setLevel(logging.WARNING)  # Only show warnings and errors by default
+
+# Silence the Groq client's internal retry logs
+groq_logger = logging.getLogger("groq._base_client")
+groq_logger.setLevel(logging.WARNING)  # Only show warnings and errors
+
 def log_checkpoint(message):
     """Log important checkpoints at INFO level regardless of current log level"""
     current_level = logger.level
@@ -101,11 +110,16 @@ def process_discount_with_groq(discount: Dict[str, Any], max_retries: int = 2) -
     """
     global current_model_index  # Use the global variable
     
+    # Force disable Groq client's internal logging right before we use it
+    logging.getLogger("groq").setLevel(logging.WARNING)
+    logging.getLogger("groq._base_client").setLevel(logging.WARNING)
+    
     models = ["llama3-70b-8192", "llama3-8b-8192", "llama-3.1-8b-instant", 
               "llama-3.3-70b-versatile", "gemma2-9b-it"]
     
     system_message = MESSAGE_TEMPLATE
-
+    
+    discount_id = discount.get('discount_id', 'unknown')
     user_message = f"Please enhance this discount object according to the instructions:\n{json.dumps(discount, indent=2, ensure_ascii=False)}"
     
     retry_count = 0
@@ -113,6 +127,9 @@ def process_discount_with_groq(discount: Dict[str, Any], max_retries: int = 2) -
         try:
             client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
             current_model = models[current_model_index]
+            
+            # Log when sending a new object to the API with discount ID
+            logger.info(f"Sending discount ID: {discount_id} to Groq API using model: {current_model}")
             
             chat_completion = client.chat.completions.create(
                 messages=[
@@ -129,20 +146,27 @@ def process_discount_with_groq(discount: Dict[str, Any], max_retries: int = 2) -
             return json.loads(response_content)
                 
         except Exception as e:
-            error_message = f"Error processing discount with ID {discount.get('discount_id')}: {str(e)}"
+            error_message = f"Error processing discount with ID {discount_id}: {str(e)}"
             error_str = str(e)
             
             # Check if it's a rate limit error (429)
-            if "429" in error_str and "rate_limit_exceeded" in error_str:
+            if "429" in error_str:
                 # Move to the next model in the list
+                prev_model = models[current_model_index]
                 current_model_index = (current_model_index + 1) % len(models)
-                logger.warning(f"{error_message}\nSwitching to model: {models[current_model_index]}")
+                new_model = models[current_model_index]
+                # Always log model changes at INFO level
+                logger.info(f"429 Too Many Requests: Switching model from {prev_model} to {new_model} for discount ID: {discount_id}")
                 time.sleep(1)  # Brief pause before trying the next model
                 continue
             
             if retry_count < max_retries:
                 retry_count += 1
-                logger.warning(f"{error_message}\nRetrying attempt {retry_count} of {max_retries}...")
+                # Log specifically when making the second retry attempt
+                if retry_count == 2:
+                    logger.info(f"Making final retry (attempt {retry_count} of {max_retries}) for discount ID: {discount_id}")
+                else:
+                    logger.warning(f"{error_message}\nRetrying attempt {retry_count} of {max_retries}...")
                 time.sleep(2)  # Add a slightly longer delay before retrying
             else:
                 logger.error(f"{error_message}\nMax retries exceeded. Using original discount.")
@@ -301,6 +325,10 @@ if __name__ == "__main__":
         if level is not None:
             logger.setLevel(level)
             log_checkpoint(f"Log level set to {level_name}")
+    else:
+        # Set default to INFO if not specified
+        logger.setLevel(logging.INFO)
+        log_checkpoint("Log level defaulting to INFO")
     
     # You can set a custom data directory here or pass None to use defaults
     data_directory = None  # Replace with your variable path if needed
