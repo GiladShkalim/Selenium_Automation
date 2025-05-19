@@ -1,103 +1,74 @@
 #!/bin/bash
 
-# IntelliShop Project Runner
-# This script sets up and runs the IntelliShop web application
-#
-# === USAGE INSTRUCTIONS ===
-# How to run:
-#   1. Make this script executable: chmod +x build.sh
-#   2. Run the script in WSL terminal: ./build.sh [1]
-#      - Add "1" parameter to update the database with sample data
-#
-# How to close:
-#   - Press Ctrl+C in the terminal to stop the server
-# ===========================
+# Source common utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_SH="$SCRIPT_DIR/common.sh"
 
-# Logging function with timestamp
-log() {
-    echo "[$(date +%Y-%m-%d\ %H:%M:%S)] $1"
-}
-
-error() {
-    echo "[$(date +%Y-%m-%d\ %H:%M:%S)] ERROR: $1" >&2
+if [ -f "$COMMON_SH" ]; then
+    source "$COMMON_SH"
+else
+    echo "$(date +%Y-%m-%d\ %H:%M:%S,%3N) - Build - ERROR - Common utilities file not found: $COMMON_SH" >&2
     exit 1
-}
+fi
 
-# Global variables for cleanup
-SERVER_PID=""
-PORT=8000
-VENV_DIR=".venv"
+# Script variables
+VENV_DIR="venv"
 PROJECT_DIR="mysite"
+ABSOLUTE_ENV_FILE="$SCRIPT_DIR/.env"
 ENV_FILE=".env"
-ABSOLUTE_ENV_FILE="$(pwd)/$ENV_FILE"  # Store absolute path to .env file
+SCRIPT_NAME="Build"
+LOG_LEVEL=${LOG_LEVEL:-1}  # Default to INFO level (1)
 
-# Cleanup function
+# ===== Helper Functions =====
+
 cleanup() {
-    log "Initiating shutdown procedure..."
+    log "Cleaning up resources" 1 "$SCRIPT_NAME"
     
-    # Kill Django server process if running
-    if [ -n "$SERVER_PID" ]; then
-        log "Stopping Django server (PID: $SERVER_PID)"
-        kill -TERM $SERVER_PID 2>/dev/null || true
-        
-        # Wait for process to terminate
-        for i in {1..5}; do
-            if ! ps -p $SERVER_PID > /dev/null 2>&1; then
-                break
-            fi
-            log "Waiting for server to terminate... ($i/5)"
-            sleep 1
-        done
-        
-        # Force kill if still running
-        if ps -p $SERVER_PID > /dev/null 2>&1; then
-            log "Server still running, forcing termination"
-            kill -9 $SERVER_PID 2>/dev/null || true
-        fi
-    fi
+    # Kill any remaining background processes
+    for job in $(jobs -p); do
+        log "Killing background process $job" 2 "$SCRIPT_NAME"
+        kill $job 2>/dev/null || true
+    done
     
-    # Deactivate virtual environment if active
-    if [ -n "$VIRTUAL_ENV" ]; then
-        log "Deactivating virtual environment"
+    # If we're in a virtual environment, deactivate it
+    if is_in_virtualenv; then
         deactivate 2>/dev/null || true
+        log "Deactivated virtual environment" 1 "$SCRIPT_NAME"
     fi
     
-    log "Cleanup complete"
-    log "Server shutdown complete"
-}
-
-# Check if script is running in a virtual environment
-is_in_virtualenv() {
-    if [ -z "$VIRTUAL_ENV" ]; then
-        return 1  # Not in a virtual environment
-    else
-        return 0  # In a virtual environment
+    # If this was called due to an interrupt, exit the script
+    if [ "${1:-}" = "INT" ]; then
+        log "Script interrupted by user" 1 "$SCRIPT_NAME"
+        # Use exit code 130 which is the standard for Ctrl+C interruption
+        exit 130
     fi
 }
 
-# MongoDB configuration setup
+# ===== MongoDB Functions =====
+
 setup_mongodb_config() {
-    log "Setting up MongoDB configuration..."
+    log "Setting up MongoDB configuration" 1 "$SCRIPT_NAME"
+    
     # Create .env file if it doesn't exist
     if [ ! -f "$ENV_FILE" ]; then
-        log "Creating environment configuration file..."
+        log "Creating new environment file $ENV_FILE" 1 "$SCRIPT_NAME"
         cat > "$ENV_FILE" << EOF
-# MongoDB Configuration
-MONGODB_URI=
-MONGODB_NAME=IntelliDB
+# MongoDB Connection Settings
+MONGODB_URI=mongodb://localhost:27017/
+MONGODB_NAME=intellishop_db
 
-# Django Settings
-SECRET_KEY=your-secret-key-here
+# Application Settings
 DEBUG=True
+SECRET_KEY=your-secret-key-here
+ALLOWED_HOSTS=localhost,127.0.0.1
 EOF
-        log "Created environment template at $ENV_FILE"
-        log "⚠️  IMPORTANT: Please edit $ENV_FILE with your actual MongoDB credentials"
+        log "Created environment file with default settings" 1 "$SCRIPT_NAME"
     else
-        log "Environment file $ENV_FILE already exists"
+        log "Environment file $ENV_FILE already exists" 1 "$SCRIPT_NAME"
     fi
     
     # Load environment variables
-    log "Loading configuration from $ENV_FILE"
+    log "Loading configuration from $ENV_FILE" 1 "$SCRIPT_NAME"
     if [ -f "$ENV_FILE" ]; then
         # Export environment variables properly - only export valid variable assignments
         while IFS= read -r line || [ -n "$line" ]; do
@@ -108,23 +79,23 @@ EOF
             
             # Only export if line contains a valid KEY=VALUE format (no spaces around =)
             if [[ $line =~ ^[A-Za-z0-9_]+=.* ]]; then
-                export "$line" || log "Warning: Failed to export environment variable: $line"
+                export "$line" || log "Warning: Failed to export environment variable: $line" 0 "$SCRIPT_NAME"
             else
-                log "Warning: Skipping invalid environment variable: $line"
+                log "Warning: Skipping invalid environment variable: $line" 0 "$SCRIPT_NAME"
             fi
         done < "$ENV_FILE"
     else
-        log "⚠️  $ENV_FILE file not found. MongoDB connection may fail."
+        log "⚠️  $ENV_FILE file not found. MongoDB connection may fail." 0 "$SCRIPT_NAME"
     fi
 }
 
 # Test MongoDB connection
 test_mongodb_connection() {
-    log "Testing MongoDB connection..."
+    log "Testing MongoDB connection..." 1 "$SCRIPT_NAME"
     
     # Check if MongoDB URI is set
     if [ -z "$MONGODB_URI" ]; then
-        log "⚠️  MongoDB URI not set. Skipping connection test."
+        log "⚠️  MongoDB URI not set. Skipping connection test." 0 "$SCRIPT_NAME"
         return 1
     fi
     
@@ -152,7 +123,7 @@ except Exception as e:
 
 # Create necessary MongoDB files
 create_mongodb_files() {
-    log "Creating MongoDB utility files..."
+    log "Creating MongoDB utility files..." 1 "$SCRIPT_NAME"
     
     # Create directories if they don't exist
     mkdir -p "$PROJECT_DIR/intellishop/utils"
@@ -162,7 +133,7 @@ create_mongodb_files() {
     # Create mongodb_utils.py
     local MONGODB_UTILS_FILE="$PROJECT_DIR/intellishop/utils/mongodb_utils.py"
     if [ ! -f "$MONGODB_UTILS_FILE" ]; then
-        log "Creating MongoDB utility file..."
+        log "Creating MongoDB utility file..." 1 "$SCRIPT_NAME"
         cat > "$MONGODB_UTILS_FILE" << 'EOF'
 from pymongo import MongoClient
 import os
@@ -188,9 +159,9 @@ def get_collection_handle(collection_name):
     db, client = get_db_handle()
     return db[collection_name]
 EOF
-        log "Created MongoDB utility file at $MONGODB_UTILS_FILE"
+        log "Created MongoDB utility file at $MONGODB_UTILS_FILE" 1 "$SCRIPT_NAME"
     else
-        log "MongoDB utility file already exists"
+        log "MongoDB utility file already exists" 1 "$SCRIPT_NAME"
     fi
     
     # Create __init__.py files to make directories into packages
@@ -200,7 +171,7 @@ EOF
     # Create mongodb_models.py
     local MONGODB_MODELS_FILE="$PROJECT_DIR/intellishop/models/mongodb_models.py"
     if [ ! -f "$MONGODB_MODELS_FILE" ]; then
-        log "Creating MongoDB models file..."
+        log "Creating MongoDB models file..." 1 "$SCRIPT_NAME"
         cat > "$MONGODB_MODELS_FILE" << 'EOF'
 from bson import ObjectId
 
@@ -248,9 +219,9 @@ class MongoDBModel:
         """Delete a document from the collection"""
         return cls.get_collection().delete_one(query)
 EOF
-        log "Created MongoDB models file at $MONGODB_MODELS_FILE"
+        log "Created MongoDB models file at $MONGODB_MODELS_FILE" 1 "$SCRIPT_NAME"
     else
-        log "MongoDB models file already exists"
+        log "MongoDB models file already exists" 1 "$SCRIPT_NAME"
     fi
     
     # Create test command
@@ -260,7 +231,7 @@ EOF
     
     local TEST_COMMAND_FILE="$PROJECT_DIR/intellishop/management/commands/test_mongodb.py"
     if [ ! -f "$TEST_COMMAND_FILE" ]; then
-        log "Creating MongoDB test command..."
+        log "Creating MongoDB test command..." 1 "$SCRIPT_NAME"
         cat > "$TEST_COMMAND_FILE" << 'EOF'
 from django.core.management.base import BaseCommand
 from intellishop.utils.mongodb_utils import get_db_handle
@@ -280,257 +251,176 @@ class Command(BaseCommand):
             if 'client' in locals():
                 client.close()
 EOF
-        log "Created MongoDB test command at $TEST_COMMAND_FILE"
+        log "Created MongoDB test command at $TEST_COMMAND_FILE" 1 "$SCRIPT_NAME"
     else
-        log "MongoDB test command already exists"
+        log "MongoDB test command already exists" 1 "$SCRIPT_NAME"
     fi
 }
 
 # Groq API Enhancement Functions
 verify_api_key() {
-    log "Verifying Groq API key..."
+    log "Verifying Groq API key..." 1 "$SCRIPT_NAME"
     
     # Check if .env file exists
     if [ ! -f "$ABSOLUTE_ENV_FILE" ]; then
-        log "❌ $ABSOLUTE_ENV_FILE file not found."
-        log "Creating template .env file..."
+        log "❌ $ABSOLUTE_ENV_FILE file not found." 0 "$SCRIPT_NAME"
+        log "Creating template .env file..." 1 "$SCRIPT_NAME"
         
         # Create template .env file
         cat > "$ABSOLUTE_ENV_FILE" << EOF
 GROQ_API_KEY=your_api_key_here
 EOF
         
-        error "Please update the .env file with your actual Groq API key and run again."
+        error "Please update the .env file with your actual Groq API key and run again." "$SCRIPT_NAME"
     fi
     
     # Load and check API key
     source "$ABSOLUTE_ENV_FILE" 2>/dev/null
     
     if [ -z "$GROQ_API_KEY" ] || [ "$GROQ_API_KEY" = "your_api_key_here" ]; then
-        error "Invalid or missing Groq API key in $ABSOLUTE_ENV_FILE. Please update it."
+        error "Invalid or missing Groq API key in $ABSOLUTE_ENV_FILE. Please update it." "$SCRIPT_NAME"
     fi
     
-    log "✅ Groq API key found."
+    log "✅ Groq API key found." 1 "$SCRIPT_NAME"
 }
 
 validate_script() {
     local SCRIPT_FILE="$1"
     
     if [ ! -f "$SCRIPT_FILE" ]; then
-        error "Script file $SCRIPT_FILE not found in $(pwd). Please check the file path."
+        error "Script file $SCRIPT_FILE not found in $(pwd). Please check the file path." "$SCRIPT_NAME"
     fi
     
-    log "✅ Script validation passed."
+    log "✅ Script validation passed." 1 "$SCRIPT_NAME"
 }
 
 run_enhancement_process() {
     local SCRIPT_FILE="$1"
     
     # Run the script
-    log "Starting data enhancement process..."
+    log "Starting data enhancement process..." 1 "$SCRIPT_NAME"
 
     python "$SCRIPT_FILE" &
     local ENHANCEMENT_PID=$!
 
-    log "Process running with PID: $ENHANCEMENT_PID"
+    log "Process running with PID: $ENHANCEMENT_PID" 2 "$SCRIPT_NAME"
 
     # Wait for the script to complete
     wait $ENHANCEMENT_PID 2>/dev/null
     local EXIT_CODE=$?
 
     if [ $EXIT_CODE -eq 0 ]; then
-        log "✅ Enhancement process completed successfully!"
-        log "Enhanced files have been saved in the data directory."
+        log "✅ Enhancement process completed successfully!" 1 "$SCRIPT_NAME"
+        log "Enhanced files have been saved in the data directory." 1 "$SCRIPT_NAME"
     else
-        log "❌ Enhancement process failed with exit code $EXIT_CODE."
+        log "❌ Enhancement process failed with exit code $EXIT_CODE." 0 "$SCRIPT_NAME"
     fi
 }
 
-# Set up trap for cleanup on script exit
-trap cleanup EXIT INT TERM
+# Set up trap for cleanup on script exit - pass the signal type to cleanup
+trap 'cleanup EXIT' EXIT
+trap 'cleanup INT' INT
+trap 'cleanup TERM' TERM
 
-echo "Checking Python version..."
+# ===== Main Script =====
+
+log "Checking Python version..." 1 "$SCRIPT_NAME"
 
 # Check if Python 3 is installed
 if command -v python3 &>/dev/null; then
     PYTHON_VERSION=$(python3 --version)
-    echo "✅ Python 3 detected: $PYTHON_VERSION"
+    log "✅ Python 3 detected: $PYTHON_VERSION" 1 "$SCRIPT_NAME"
 else
-    echo "❌ Python 3 not detected. Installing Python 3..."
+    log "❌ Python 3 not detected. Installing Python 3..." 0 "$SCRIPT_NAME"
     
     # Detect OS and install Python
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # macOS
-        echo "Detected macOS. Using Homebrew to install Python 3..."
+        log "Detected macOS. Using Homebrew to install Python 3..." 1 "$SCRIPT_NAME"
         if command -v brew &>/dev/null; then
             brew install python3
         else
-            echo "Homebrew not installed. Installing Homebrew first..."
+            log "Homebrew not installed. Installing Homebrew first..." 1 "$SCRIPT_NAME"
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             brew install python3
         fi
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
         # Linux
-        echo "Detected Linux. Installing Python 3..."
+        log "Detected Linux. Installing Python 3..." 1 "$SCRIPT_NAME"
         if command -v apt-get &>/dev/null; then
             sudo apt-get update
             sudo apt-get install -y python3 python3-pip python3-venv
         elif command -v yum &>/dev/null; then
             sudo yum install -y python3 python3-pip
         else
-            echo "ERROR: Unsupported package manager. Please install Python 3 manually."
-            exit 1
+            error "Unsupported package manager. Please install Python 3 manually." "$SCRIPT_NAME"
         fi
     else
-        echo "ERROR: Unsupported operating system. Please install Python 3 manually."
-        exit 1
+        error "Unsupported operating system. Please install Python 3 manually." "$SCRIPT_NAME"
     fi
     
     # Verify Python was installed
     if command -v python3 &>/dev/null; then
         PYTHON_VERSION=$(python3 --version)
-        echo "✅ Python 3 installed successfully: $PYTHON_VERSION"
+        log "✅ Python 3 installed successfully: $PYTHON_VERSION" 1 "$SCRIPT_NAME"
     else
-        echo "❌ Failed to install Python 3. Please install manually."
-        exit 1
+        error "Failed to install Python 3. Please install manually." "$SCRIPT_NAME"
     fi
 fi
 
-log "Starting IntelliShop setup"
+log "Starting IntelliShop setup" 1 "$SCRIPT_NAME"
 
 # Configuration
 REQUIREMENTS_FILE="requirements.txt"
 
-# If we're already in a virtual environment but not our target one, warn and deactivate
-if is_in_virtualenv && [[ "$VIRTUAL_ENV" != *"$VENV_DIR"* ]]; then
-    log "Warning: Already in a different virtual environment. Deactivating."
-    deactivate 2>/dev/null || true
-fi
+# Setup virtual environment using function from common.sh
+setup_virtual_environment "$VENV_DIR"
 
-# Setup or verify virtual environment
-if [ -d "$VENV_DIR" ]; then
-    log "Virtual environment directory exists, activating"
-    source $VENV_DIR/bin/activate || error "Failed to activate existing virtual environment"
-    
-    # Double-check activation succeeded
-    if ! is_in_virtualenv; then
-        log "Virtual environment activation failed. Recreating environment."
-        rm -rf $VENV_DIR
-        python3 -m venv $VENV_DIR || error "Failed to create virtual environment"
-        source $VENV_DIR/bin/activate || error "Failed to activate new virtual environment"
-    fi
-else
-    log "Creating new virtual environment"
-    python3 -m venv $VENV_DIR || error "Failed to create virtual environment"
-    source $VENV_DIR/bin/activate || error "Failed to activate new virtual environment"
-fi
-
-# Verify we're now in a virtual environment
-if ! is_in_virtualenv; then
-    error "Failed to properly activate virtual environment"
-fi
-
-log "Successfully activated virtual environment: $VIRTUAL_ENV"
-
-# Loading spinner function
-show_spinner() {
-    local pid=$1
-    local message=$2
-    local spin='-\|/'
-    local i=0
-    
-    # Save cursor position and hide cursor
-    tput sc
-    tput civis
-    
-    echo -n "$message "
-    
-    while kill -0 $pid 2>/dev/null; do
-        i=$(( (i+1) % 4 ))
-        printf "\r$message ${spin:$i:1}"
-        sleep 0.1
-    done
-    
-    # Clear line, restore cursor position and show cursor
-    printf "\r\033[K$message Complete!"
-    echo
-    tput cnorm
-}
-
-# Progress bar function
-show_progress_bar() {
-    local pid=$1
-    local message=$2
-    local width=40
-    
-    # Save cursor position and hide cursor
-    tput sc
-    tput civis
-    
-    echo -n "$message "
-    
-    local i=0
-    while kill -0 $pid 2>/dev/null; do
-        i=$(( (i+1) % (width+1) ))
-        # Create the progress bar
-        printf "\r$message ["
-        printf "%${i}s" | tr ' ' '='
-        printf "%$(( width - i ))s" | tr ' ' ' '
-        printf "] %d%%" $(( (i * 100) / width ))
-        sleep 0.1
-    done
-    
-    # Show completed progress bar
-    printf "\r$message ["
-    printf "%${width}s" | tr ' ' '='
-    printf "] 100%%"
-    echo
-    tput cnorm
-}
+log "Successfully activated virtual environment: $VIRTUAL_ENV" 1 "$SCRIPT_NAME"
 
 # Update pip to latest version
-log "Updating pip to latest version"
+log "Updating pip to latest version" 1 "$SCRIPT_NAME"
 python -m pip install --upgrade pip > /dev/null 2>&1 &
 PIP_PID=$!
 show_progress_bar $PIP_PID "Updating pip"
 wait $PIP_PID
 if [ $? -ne 0 ]; then
-    log "Warning: Failed to upgrade pip"
+    log "Warning: Failed to upgrade pip" 0 "$SCRIPT_NAME"
 fi
 
 # Install dependencies from requirements file if it exists
 if [ -f "$REQUIREMENTS_FILE" ]; then
-    log "Installing dependencies from $REQUIREMENTS_FILE"
+    log "Installing dependencies from $REQUIREMENTS_FILE" 1 "$SCRIPT_NAME"
     python -m pip install -r $REQUIREMENTS_FILE > /dev/null 2>&1 &
     PIP_PID=$!
     show_progress_bar $PIP_PID "Installing dependencies"
     wait $PIP_PID
     if [ $? -ne 0 ]; then
-        error "Failed to install requirements"
+        error "Failed to install requirements" "$SCRIPT_NAME"
     fi
 else
     # Install Django if not already installed
     if ! python -m pip show django &> /dev/null; then
-        log "Installing Django"
+        log "Installing Django" 1 "$SCRIPT_NAME"
         python -m pip install django > /dev/null 2>&1 &
         PIP_PID=$!
         show_progress_bar $PIP_PID "Installing Django"
         wait $PIP_PID
         if [ $? -ne 0 ]; then
-            error "Failed to install Django"
+            error "Failed to install Django" "$SCRIPT_NAME"
         fi
     else
-        log "Django already installed in virtual environment"
+        log "Django already installed in virtual environment" 1 "$SCRIPT_NAME"
     fi
     
     # Install MongoDB dependencies
-    log "Installing PyMongo and dnspython"
+    log "Installing PyMongo and dnspython" 1 "$SCRIPT_NAME"
     python -m pip install pymongo dnspython > /dev/null 2>&1 &
     PIP_PID=$!
     show_progress_bar $PIP_PID "Installing MongoDB dependencies"
     wait $PIP_PID
     if [ $? -ne 0 ]; then
-        log "Warning: Failed to install MongoDB dependencies"
+        log "Warning: Failed to install MongoDB dependencies" 0 "$SCRIPT_NAME"
     fi
 fi
 
@@ -542,41 +432,41 @@ create_mongodb_files
 
 # Change to the Django project directory
 if [ ! -d "$PROJECT_DIR" ]; then
-    error "Django project directory '$PROJECT_DIR' not found"
+    error "Django project directory '$PROJECT_DIR' not found" "$SCRIPT_NAME"
 fi
 
-cd $PROJECT_DIR || error "Failed to change to project directory"
+cd $PROJECT_DIR || error "Failed to change to project directory" "$SCRIPT_NAME"
 
 # Test MongoDB connection
-test_mongodb_connection || log "Warning: MongoDB connection test failed. The application may not function correctly."
+test_mongodb_connection || log "Warning: MongoDB connection test failed. The application may not function correctly." 0 "$SCRIPT_NAME"
 
 # Run database migrations if needed
-log "Running database migrations"
-python manage.py migrate || log "Warning: Database migration failed"
+log "Running database migrations" 1 "$SCRIPT_NAME"
+python manage.py migrate || log "Warning: Database migration failed" 0 "$SCRIPT_NAME"
 
 # Collect static files for production
-log "Collecting static files"
-python manage.py collectstatic --noinput || log "Warning: Static file collection failed"
+log "Collecting static files" 1 "$SCRIPT_NAME"
+python manage.py collectstatic --noinput || log "Warning: Static file collection failed" 0 "$SCRIPT_NAME"
 
 # Check for Django configuration errors
-log "Checking for configuration errors"
-python manage.py check --deploy || log "Warning: Django deployment checks failed"
+log "Checking for configuration errors" 1 "$SCRIPT_NAME"
+python manage.py check --deploy || log "Warning: Django deployment checks failed" 0 "$SCRIPT_NAME"
 
 # Check if database update was requested
 if [ "$1" = "1" ]; then
-    log "Database update requested. Running update script..."
+    log "Database update requested. Running update script..." 1 "$SCRIPT_NAME"
     python update_database.py
     if [ $? -ne 0 ]; then
-        log "⚠️ Database update failed!"
+        log "⚠️ Database update failed!" 0 "$SCRIPT_NAME"
     else
-        log "✅ Database updated successfully!"
+        log "✅ Database updated successfully!" 1 "$SCRIPT_NAME"
     fi
 elif [ "$1" = "2" ]; then
     # Define Groq-specific variables
     GROQ_SCRIPT_FILE="groq_chat.py"
     GROQ_REQUIREMENTS_FILE="requirements.txt"
     
-    log "Running AI enhancement process..."
+    log "Running AI enhancement process..." 1 "$SCRIPT_NAME"
     
     # Verify the Groq API key
     verify_api_key
@@ -588,22 +478,32 @@ elif [ "$1" = "2" ]; then
     run_enhancement_process "$GROQ_SCRIPT_FILE"
     
     # Then run the database update script
-    log "Running database update script..."
+    log "Running database update script..." 1 "$SCRIPT_NAME"
     python update_database.py
     if [ $? -ne 0 ]; then
-        log "⚠️ Database update failed!"
+        log "⚠️ Database update failed!" 0 "$SCRIPT_NAME"
     else
-        log "✅ Database updated successfully!"
+        log "✅ Database updated successfully!" 1 "$SCRIPT_NAME"
     fi
 else
-    log "Skipping database update. Run with './build.sh 1' to update the database or './build.sh 2' for AI enhancement and database update."
+    log "Skipping database update. Run with './build.sh 1' to update the database or './build.sh 2' for AI enhancement and database update." 1 "$SCRIPT_NAME"
 fi
 
-SERVER_PID=$!
+# Print final summary
+log "==== Build Process Summary ====" 1 "$SCRIPT_NAME"
+log "✅ Python environment: $PYTHON_VERSION" 1 "$SCRIPT_NAME"
+log "✅ Virtual environment: Activated in $VENV_DIR" 1 "$SCRIPT_NAME"
+log "✅ Django project: Ready in $PROJECT_DIR" 1 "$SCRIPT_NAME"
 
-log "Server running with PID: $SERVER_PID"
+if [ "$1" = "1" ]; then
+    log "✅ Database: Updated" 1 "$SCRIPT_NAME"
+elif [ "$1" = "2" ]; then
+    log "✅ AI Enhancement: Completed" 1 "$SCRIPT_NAME"
+    log "✅ Database: Updated" 1 "$SCRIPT_NAME"
+else
+    log "ℹ️ Database: Not updated (use './build.sh 1' or './build.sh 2' to update)" 1 "$SCRIPT_NAME"
+fi
 
-# Wait for the Django server to exit
-wait $SERVER_PID 2>/dev/null || true
+log "Build process completed successfully!" 1 "$SCRIPT_NAME"
 
 # The cleanup function will be called automatically through the trap 

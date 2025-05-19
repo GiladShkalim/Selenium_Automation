@@ -65,13 +65,20 @@ DEFAULT_DATA_DIR = os.environ.get('DISCOUNT_DATA_DIR', os.path.join(os.path.dirn
 
 current_model_index = 0
 
-# Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S,%3d'
+    datefmt='%Y-%m-%d %H:%M:%S' 
 )
 logger = logging.getLogger("GroqEnhancer")
+log_level = os.environ.get('LOG_LEVEL', 'WARNING').upper()
+logger.setLevel(getattr(logging, log_level, logging.WARNING))
+def log_checkpoint(message):
+    """Log important checkpoints at INFO level regardless of current log level"""
+    current_level = logger.level
+    logger.setLevel(logging.INFO)
+    logger.info(message)
+    logger.setLevel(current_level)
 
 # Ensure constants.py exists in the same directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -129,16 +136,16 @@ def process_discount_with_groq(discount: Dict[str, Any], max_retries: int = 2) -
             if "429" in error_str and "rate_limit_exceeded" in error_str:
                 # Move to the next model in the list
                 current_model_index = (current_model_index + 1) % len(models)
-                logger.info(f"{error_message}\nSwitching to model: {models[current_model_index]}")
+                logger.warning(f"{error_message}\nSwitching to model: {models[current_model_index]}")
                 time.sleep(1)  # Brief pause before trying the next model
                 continue
             
             if retry_count < max_retries:
                 retry_count += 1
-                logger.info(f"{error_message}\nRetrying attempt {retry_count} of {max_retries}...")
+                logger.warning(f"{error_message}\nRetrying attempt {retry_count} of {max_retries}...")
                 time.sleep(2)  # Add a slightly longer delay before retrying
             else:
-                logger.info(f"{error_message}\nMax retries exceeded. Using original discount.")
+                logger.error(f"{error_message}\nMax retries exceeded. Using original discount.")
                 return discount
     
     return discount
@@ -161,19 +168,21 @@ def update_discounts_file(input_file_path: str, output_file_path: str) -> None:
     deprecated_discount_ids = []
     
     total_discounts = len(discounts)
-    logger.info(f"Processing {total_discounts} discounts...")
+    log_checkpoint(f"Processing file: {os.path.basename(input_file_path)} with {total_discounts} discounts")
     
     # Process each discount one by one
     for i, discount in enumerate(discounts):
         discount_id = discount.get('discount_id', 'unknown')
-        logger.info(f"Processing discount {i+1}/{total_discounts} (ID: {discount_id})...")
+        # Reduce frequency of progress logs - only log at DEBUG level
+        if (i+1) % 10 == 0 or i+1 == total_discounts:
+            logger.debug(f"Progress: {i+1}/{total_discounts} discounts processed")
         
         # Process with Groq with retry mechanism
         edited_discount = process_discount_with_groq(discount, max_retries=2)
         
         # Check if the discount is the original one (indicating failed processing)
         if edited_discount is discount:
-            logger.info(f"Skipping discount {discount_id} due to processing failure.")
+            logger.warning(f"Failed to enhance discount ID: {discount_id}")
             deprecated_discount_ids.append(discount_id)
             continue
         
@@ -190,14 +199,20 @@ def update_discounts_file(input_file_path: str, output_file_path: str) -> None:
     successful_count = len(enhanced_discounts)
     deprecated_count = total_discounts - successful_count
     
-    logger.info("\nSummary:")
-    logger.info(f"Total discounts parsed: {total_discounts}")
-    logger.info(f"Total discounts deprecated: {deprecated_count}")
+    # Log summary in the same format as update_database.py
+    log_checkpoint("\nFile Summary:")
+    log_checkpoint(f"  - Total discounts processed: {total_discounts}")
+    log_checkpoint(f"  - Successfully enhanced: {successful_count}")
+    log_checkpoint(f"  - Failed/deprecated: {deprecated_count}")
     
     if deprecated_count > 0:
-        logger.info(f"Deprecated discount IDs: {', '.join(deprecated_discount_ids)}")
+        if len(deprecated_discount_ids) <= 20:
+            log_checkpoint(f"  - Deprecated discount IDs: {', '.join(deprecated_discount_ids)}")
+        else:
+            log_checkpoint(f"  - Deprecated discount IDs: {', '.join(deprecated_discount_ids[:20])}...")
+            log_checkpoint(f"    ... and {len(deprecated_discount_ids) - 20} more")
     
-    logger.info(f"Processing complete: {successful_count} discounts saved to {output_file_path}.")
+    log_checkpoint(f"Output saved to: {output_file_path}")
 
 def find_json_files(data_dir_path=None):
     """Find all JSON files in the data directory and its subdirectories"""
@@ -206,7 +221,7 @@ def find_json_files(data_dir_path=None):
     # Use provided path if available
     if data_dir_path and os.path.exists(data_dir_path):
         data_dir = data_dir_path
-        logger.info(f"Using provided data directory: {data_dir}")
+        logger.debug(f"Using provided data directory: {data_dir}")
     else:
         # Use the global default with fallbacks
         data_dir = DEFAULT_DATA_DIR
@@ -224,10 +239,10 @@ def find_json_files(data_dir_path=None):
             for alt_path in alternative_paths:
                 if os.path.exists(alt_path):
                     data_dir = alt_path
-                    logger.info(f"Using alternative data directory: {data_dir}")
+                    logger.debug(f"Using alternative data directory: {data_dir}")
                     break
     
-    logger.info(f"Scanning for JSON files in {data_dir}")
+    log_checkpoint(f"Scanning for JSON files in {data_dir}")
     
     json_files = []
     # Walk through directory and its subdirectories
@@ -237,7 +252,7 @@ def find_json_files(data_dir_path=None):
                 file_path = os.path.join(root, file)
                 json_files.append(file_path)
     
-    logger.info(f"Found {len(json_files)} JSON files")
+    log_checkpoint(f"Found {len(json_files)} JSON files")
     
     return json_files
 
@@ -247,12 +262,14 @@ def process_json_files(data_dir_path=None):
     Args:
         data_dir_path: Optional path to the data directory.
     """
+    log_checkpoint("Starting Groq discount enhancement process")
     json_files = find_json_files(data_dir_path)
     
     if not json_files:
-        logger.info("No JSON files found to process.")
+        logger.warning("No JSON files found to process.")
         return
     
+    success_count = 0
     for input_file_path in json_files:
         # Create output file path based on input file name
         file_name = os.path.basename(input_file_path)
@@ -260,13 +277,31 @@ def process_json_files(data_dir_path=None):
         output_file_name = f"enhanced_{file_name}"
         output_file_path = os.path.join(file_dir, output_file_name)
         
-        logger.info(f"\nProcessing file: {file_name}")
-        logger.info(f"Output will be saved to: {output_file_name}")
+        log_checkpoint(f"\nProcessing file: {file_name}")
         
         # Process the file
         update_discounts_file(input_file_path, output_file_path)
+        success_count += 1
+    
+    # Final summary - always show at INFO level
+    log_checkpoint("\nSummary:")
+    log_checkpoint(f"  - Total files processed: {len(json_files)}")
+    log_checkpoint(f"  - Successfully processed: {success_count}")
+    
+    if success_count == len(json_files):
+        log_checkpoint("✅ Groq enhancement process completed successfully!")
+    else:
+        logger.warning("⚠️ Groq enhancement process completed with warnings.")
 
 if __name__ == "__main__":
+    # Check for environment variable to control log level
+    if 'LOG_LEVEL' in os.environ:
+        level_name = os.environ['LOG_LEVEL'].upper()
+        level = getattr(logging, level_name, None)
+        if level is not None:
+            logger.setLevel(level)
+            log_checkpoint(f"Log level set to {level_name}")
+    
     # You can set a custom data directory here or pass None to use defaults
     data_directory = None  # Replace with your variable path if needed
     process_json_files(data_directory)

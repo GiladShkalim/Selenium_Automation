@@ -46,16 +46,46 @@ show_spinner() {
     
     echo -n "$message "
     
-    while kill -0 $pid 2>/dev/null; do
+    # Track if we need to handle an interrupt
+    local interrupted=false
+    
+    # Define a function to handle interrupts
+    interrupt_handler() {
+        interrupted=true
+        # Kill the monitored process if still running
+        kill -0 $pid 2>/dev/null && kill $pid 2>/dev/null
+        return 1
+    }
+    
+    # Set up temporary trap for this function
+    trap interrupt_handler INT
+    
+    while kill -0 $pid 2>/dev/null && ! $interrupted; do
         i=$(( (i+1) % 4 ))
         printf "\r$message ${spin:$i:1}"
         sleep 0.1
     done
     
-    # Clear line, restore cursor position and show cursor
-    printf "\r\033[K$message Complete!"
-    echo
+    # Restore original trap
+    trap - INT
+    
+    # Only show completion message if not interrupted
+    if ! $interrupted; then
+        # Clear line, restore cursor position and show cursor
+        printf "\r\033[K$message Complete!"
+        echo
+    else
+        # Clear the spinner line
+        printf "\r\033[K"
+    fi
+    
     tput cnorm
+    
+    # If interrupted, propagate the signal to parent
+    if $interrupted; then
+        return 1
+    fi
+    return 0
 }
 
 show_progress_bar() {
@@ -69,8 +99,22 @@ show_progress_bar() {
     
     echo -n "$message "
     
+    # Track if we need to handle an interrupt
+    local interrupted=false
+    
+    # Define a function to handle interrupts
+    interrupt_handler() {
+        interrupted=true
+        # Kill the monitored process if still running
+        kill -0 $pid 2>/dev/null && kill $pid 2>/dev/null
+        return 1
+    }
+    
+    # Set up temporary trap for this function
+    trap interrupt_handler INT
+    
     local i=0
-    while kill -0 $pid 2>/dev/null; do
+    while kill -0 $pid 2>/dev/null && ! $interrupted; do
         i=$(( (i+1) % (width+1) ))
         # Create the progress bar
         printf "\r$message ["
@@ -80,12 +124,28 @@ show_progress_bar() {
         sleep 0.1
     done
     
-    # Show completed progress bar
-    printf "\r$message ["
-    printf "%${width}s" | tr ' ' '='
-    printf "] 100%%"
-    echo
+    # Restore original trap
+    trap - INT
+    
+    # Only show completed progress bar if not interrupted
+    if ! $interrupted; then
+        # Show completed progress bar
+        printf "\r$message ["
+        printf "%${width}s" | tr ' ' '='
+        printf "] 100%%"
+        echo
+    else
+        # Clear the progress bar line
+        printf "\r\033[K"
+    fi
+    
     tput cnorm
+    
+    # If interrupted, propagate the signal to parent
+    if $interrupted; then
+        return 1
+    fi
+    return 0
 }
 
 # ===== Environment Functions =====
