@@ -1,13 +1,26 @@
 #!/bin/bash
 
-# Set the directory for the tests
-TEST_DIR="Scraper/pages/tests/jemix"
-VENV_DIR="venv"
+# Get the absolute path of the script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
+# Set the directory for the tests
+TEST_DIR="$SCRIPT_DIR/pages/tests/jemix"
+VENV_DIR="$SCRIPT_DIR/venv"
+
+# Check for required browser
+if [ -f /etc/debian_version ]; then
+    # WSL environment
+    if ! command -v chromium-browser &> /dev/null && ! command -v google-chrome &> /dev/null; then
+        echo "Error: Neither Chromium nor Google Chrome is installed."
+        echo "Please install either browser using your system package manager:"
+        echo "sudo apt update && sudo apt install -y chromium-browser"
+        exit 1
+    fi
+fi
+
+# Set PYTHONPATH to include the project root
+export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
 
 # Create and activate a virtual environment if it doesn't exist
 if [ ! -d "$VENV_DIR" ]; then
@@ -18,42 +31,19 @@ fi
 # Activate the virtual environment
 source "$VENV_DIR/bin/activate"
 
-# Verify pip installation in the virtual environment
-if ! command_exists pip; then
-    echo "pip is not installed in the virtual environment. Installing..."
-    python3 -m ensurepip
-fi
+# Install required packages
+pip install selenium webdriver-manager
 
-# Verify Selenium installation
-if ! python3 -c "import selenium" &> /dev/null; then
-    echo "Selenium is not installed in the virtual environment. Installing..."
-    pip install selenium
-fi
+# Run the test module directly with increased verbosity
+cd "$PROJECT_ROOT"
+echo "Running tests from directory: $PWD"
+python3 -m unittest Scraper.pages.tests.jemix.HomePage_load -v
 
-# Verify WebDriver installation (e.g., ChromeDriver)
-if ! command_exists chromedriver; then
-    echo "ChromeDriver is not installed. Installing using apt..."
-    sudo apt update
-    sudo apt install -y chromium-chromedriver
-    if ! command_exists chromedriver; then
-        echo "Failed to install ChromeDriver. Please ensure your package manager is configured correctly."
-        deactivate
-        exit 1
-    fi
-fi
+# Store the test result
+TEST_RESULT=$?
 
-# Run tests
-if [ "$#" -eq 0 ]; then
-    # No arguments, run all tests
-    echo "Running all tests in $TEST_DIR"
-    python3 -m unittest discover -s "$TEST_DIR" -p "*.py"
-else
-    # Run specified tests
-    for test in "$@"; do
-        echo "Running test: $test"
-        python3 -m unittest "$TEST_DIR/$test"
-    done
-fi
-
-# Deactivate the virtual environment
+# Deactivate virtual environment
 deactivate
+
+# Exit with the test result
+exit $TEST_RESULT
