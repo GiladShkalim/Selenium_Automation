@@ -1,3 +1,17 @@
+# define a base class for all provider pages
+
+#from Scraper.pages.jemix.ProviderPage import ProviderPage
+
+# Example usage for a specific provider
+#provider_page = ProviderPage(driver, "https://www.jemix.co.il/feetfun-coupon/")
+#provider_page.navigate_to_provider()
+#coupons = provider_page.get_coupon_list("coupon-class")  # Replace with actual class name
+#provider_page.click_coupon("Specific Coupon Text")
+#details = provider_page.get_coupon_details("detail-class")  # Replace with actual class name
+#provider_page.apply_coupon("COUPON2025")
+
+
+
 from selenium.webdriver.common.by import By
 from Scraper.pages.base.BasePage import BasePage
 

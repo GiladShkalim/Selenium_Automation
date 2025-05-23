@@ -1,4 +1,18 @@
 # CategoryPage.py
+# define a base class for all category pages
+
+# Example usage for the Fashion category 
+#from Scraper.pages.jemix.CategoryPage import CategoryPage
+#fashion_page = CategoryPage(driver, "https://www.jemix.co.il/tag/fashion/")
+#fashion_page.navigate_to_category()
+#coupons = fashion_page.get_item_list("coupon-class")  # Replace with actual class name
+#fashion_page.click_item("Specific Coupon Text")
+
+# Example usage for the Shopping category
+#shopping_page = CategoryPage(driver, "https://www.jemix.co.il/tag/shopping/")
+#shopping_page.navigate_to_category()
+#products = shopping_page.get_item_list("product-class")  # Replace with actual class name
+#shopping_page.click_item("Specific Product Name")
 
 from selenium.webdriver.common.by import By
 from Scraper.pages.base.BasePage import BasePage
