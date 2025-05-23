@@ -10,7 +10,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.utils import ChromeType
 from ....pages.jemix.HomePage import HomePage
 from ....config.settings import BASE_URL
 
@@ -40,14 +39,9 @@ class TestHomePageLoad(unittest.TestCase):
             chrome_options.add_argument("--headless=new")
 
         try:
-            # Use existing Chrome installation, don't download new one
-            if platform.system() == "Windows":
-                chrome_type = ChromeType.GOOGLE
-            else:
-                chrome_type = ChromeType.CHROMIUM
-                
+            # Initialize Chrome driver with automatic ChromeDriver management
             self.driver = webdriver.Chrome(
-                service=Service(ChromeDriverManager(chrome_type=chrome_type).install()),
+                service=Service(ChromeDriverManager().install()),
                 options=chrome_options
             )
         except Exception as e:
