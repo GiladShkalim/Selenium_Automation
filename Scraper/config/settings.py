@@ -19,3 +19,14 @@ PAGES = [
     {"name": "Sport", "url": "https://www.jemix.co.il/tag/sport/"},
     {"name": "Electronics and technology", "url": "https://www.jemix.co.il/tag/electronics-and-technology/"},
 ]
+
+# Test Users Configuration
+TEST_USERS = {
+    "valid_user": {
+        "username": "gildonmin1998@gmail.com",
+        "password": "MalicG1212!"
+    }
+}
+
+# Account dashboard URL
+ACCOUNT_DASHBOARD_URL = "https://www.jemix.co.il/account/"
