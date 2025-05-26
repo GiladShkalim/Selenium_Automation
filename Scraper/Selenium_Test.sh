@@ -32,7 +32,7 @@ fi
 source "$VENV_DIR/bin/activate"
 
 # Install required packages
-pip install selenium webdriver-manager
+pip install selenium webdriver-manager colorama
 
 # Run the test module directly with increased verbosity
 cd "$PROJECT_ROOT"
@@ -41,6 +41,7 @@ echo "Running tests from directory: $PWD"
 #python3 -m unittest Scraper.pages.tests.jemix.LoginPage_test -v
 #python3 -m unittest Scraper.pages.tests.jemix.test_logout -v
 python3 -m unittest Scraper.pages.tests.jemix.test_main_navigation -v
+#python3 -m unittest Scraper.pages.tests.jemix.test_category_navigation -v
 
 # Store the test result
 TEST_RESULT=$?
