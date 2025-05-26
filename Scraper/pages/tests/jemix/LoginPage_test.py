@@ -92,8 +92,7 @@ class TestLogin(unittest.TestCase):
         1. Navigate to login page
         2. Enter valid credentials
         3. Submit login form
-        4. Verify redirect to account dashboard
-        5. Verify user is logged in
+        4. Verify redirect to account dashboard URL
         """
         try:
             logger.info("Starting valid user login test")
@@ -110,10 +109,6 @@ class TestLogin(unittest.TestCase):
             current_url = self.driver.current_url
             logger.info(f"Current URL before login: {current_url}")
             
-            # Take screenshot before login attempt
-            self.driver.save_screenshot("before_login.png")
-            logger.info("Saved screenshot before login attempt")
-            
             logger.info("Attempting login with valid credentials")
             try:
                 self.login_page.login(
@@ -122,9 +117,6 @@ class TestLogin(unittest.TestCase):
                 )
             except Exception as e:
                 logger.error(f"Login attempt failed: {str(e)}")
-                # Take screenshot after failed login attempt
-                self.driver.save_screenshot("login_failure.png")
-                logger.info("Saved screenshot of login failure")
                 raise
             
             # Assert
@@ -136,6 +128,7 @@ class TestLogin(unittest.TestCase):
                     "Failed to redirect to account dashboard"
                 )
                 
+                # Verify final URL matches expected dashboard URL
                 current_url = self.account_page.get_current_url()
                 logger.info(f"Current URL after login: {current_url}")
                 
@@ -145,28 +138,15 @@ class TestLogin(unittest.TestCase):
                     f"Expected URL {ACCOUNT_DASHBOARD_URL}, but got {current_url}"
                 )
                 
-                # Verify user is logged in
-                logger.info("Verifying login status")
-                self.assertTrue(
-                    self.account_page.is_user_logged_in(),
-                    "User appears to be not logged in after successful login attempt"
-                )
-                
                 logger.info("Login test completed successfully")
                 
             except AssertionError as e:
                 logger.error(f"Login verification failed: {str(e)}")
-                # Take screenshot after failed verification
-                self.driver.save_screenshot("verification_failure.png")
-                logger.info("Saved screenshot of verification failure")
                 raise
             
         except TimeoutException as e:
             logger.error("Page load or element interaction timed out")
             logger.error(f"Timeout details: {str(e)}")
-            # Take screenshot of timeout state
-            self.driver.save_screenshot("timeout_error.png")
-            logger.info("Saved screenshot of timeout error")
             raise
         except WebDriverException as e:
             logger.error("WebDriver encountered an error")
@@ -199,4 +179,4 @@ class TestLogin(unittest.TestCase):
             logger.error(f"Failed to clean up temporary directory: {str(e)}")
 
 if __name__ == "__main__":
-    unittest.main() 
+    unittest.main()

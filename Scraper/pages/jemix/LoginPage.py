@@ -13,15 +13,15 @@ class LoginPage(BasePage):
     LOGIN_ELEMENTS = {
         "username_field": (
             By.CSS_SELECTOR, 
-            "input[name='log'].elementor-field"
+            "input[name='log']#user-955ddae"
         ),
         "password_field": (
             By.CSS_SELECTOR, 
-            "input[name='pwd'].elementor-field"
+            "input[name='pwd']#password-955ddae"
         ),
         "login_button": (
             By.CSS_SELECTOR, 
-            "button[name='wp-submit'].elementor-button"
+            "button[type='submit'][name='wp-submit']"
         ),
         "login_form": (
             By.CSS_SELECTOR,
@@ -80,7 +80,7 @@ class LoginPage(BasePage):
                 self.driver.execute_script("arguments[0].click();", login_button)
             
             # Add a longer wait after form submission
-            time.sleep(3)  # Wait for form submission and initial redirect
+            time.sleep(5)  # Increase from 3 to 5 seconds
             
             # Wait for URL change
             WebDriverWait(self.driver, 10).until(
@@ -88,7 +88,7 @@ class LoginPage(BasePage):
             )
             
             # Additional wait for page load
-            time.sleep(2)  # Wait for the new page to stabilize
+            time.sleep(4)  # Increase from 2 to 4 seconds
             
         except Exception as e:
             # Log the page source for debugging
