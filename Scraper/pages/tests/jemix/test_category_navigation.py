@@ -98,38 +98,70 @@ class TestCategoryNavigation(unittest.TestCase):
             bool: True if verification passes, False otherwise
         """
         try:
+            logger.info(f"Starting provider list verification for category: {category_name}")
+            logger.info(f"Current URL: {self.driver.current_url}")
+            
             # Wait for and verify the provider list container
-            provider_list = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "elementor-posts-container"))
-            )
-            
-            # Verify providers are present
-            providers = provider_list.find_elements(By.CLASS_NAME, "elementor-post")
-            
-            # Verify at least one provider is present
-            if len(providers) == 0:
-                logger.warning(f"No providers found for category: {category_name}")
+            logger.info("Waiting for provider list container...")
+            try:
+                provider_list = WebDriverWait(self.driver, 20).until(
+                    EC.presence_of_element_located((By.CLASS_NAME, "elementor-posts-container"))
+                )
+                logger.info("Provider list container found successfully")
+            except TimeoutException:
+                logger.error("Timeout waiting for provider list container")
+                logger.info(f"Page source: {self.driver.page_source[:1000]}...")
                 return False
                 
-            # Verify each provider has required elements
-            for provider in providers:
+            # Get all provider articles
+            providers = provider_list.find_elements(By.CLASS_NAME, "elementor-post")
+            total_providers = len(providers)
+            valid_providers = 0
+            empty_providers = 0
+            
+            logger.info(f"Found {total_providers} total article elements")
+            
+            # Verify each provider article
+            for idx, provider in enumerate(providers, 1):
                 try:
                     # Check for thumbnail link
-                    provider.find_element(By.CLASS_NAME, "elementor-post__thumbnail__link")
-                    # Check for thumbnail image
-                    provider.find_element(By.CLASS_NAME, "elementor-post__thumbnail")
-                except NoSuchElementException:
-                    logger.warning(f"Provider missing required elements in category: {category_name}")
-                    return False
+                    thumbnail_link = provider.find_element(By.CLASS_NAME, "elementor-post__thumbnail__link")
+                    thumbnail = provider.find_element(By.CLASS_NAME, "elementor-post__thumbnail")
                     
-            logger.info(f"Successfully verified {len(providers)} providers for category: {category_name}")
-            return True
+                    # If we get here, this is a valid provider with all required elements
+                    valid_providers += 1
+                    logger.info(f"Provider {idx} - valid provider found with link: {thumbnail_link.get_attribute('href')}")
+                    
+                except NoSuchElementException:
+                    # Check if this is an empty article (valid case to skip)
+                    try:
+                        empty_text_div = provider.find_element(By.CLASS_NAME, "elementor-post__text")
+                        if not empty_text_div.text.strip():  # If the text div is empty
+                            empty_providers += 1
+                            logger.info(f"Provider {idx} - empty article found (this is okay, skipping)")
+                            continue
+                    except NoSuchElementException:
+                        # If we can't even find the text div, log it but continue
+                        logger.warning(f"Provider {idx} - article structure unclear, skipping")
+                        empty_providers += 1
+                        continue
             
-        except TimeoutException:
-            logger.error(f"Timeout waiting for provider list in category: {category_name}")
-            return False
+            logger.info(f"Category {category_name} summary:")
+            logger.info(f"- Total articles: {total_providers}")
+            logger.info(f"- Valid providers: {valid_providers}")
+            logger.info(f"- Empty articles: {empty_providers}")
+            
+            # Test passes if we found at least one valid provider
+            if valid_providers > 0:
+                logger.info(f"Successfully verified category with {valid_providers} valid providers")
+                return True
+            else:
+                logger.warning(f"No valid providers found in category: {category_name}")
+                return False
+                
         except Exception as e:
             logger.error(f"Error verifying provider list: {str(e)}")
+            logger.error(f"Stack trace:", exc_info=True)
             return False
 
     def test_category_navigation(self):

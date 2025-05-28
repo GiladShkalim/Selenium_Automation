@@ -13,7 +13,7 @@ PAGES = [
     {"name": "Shopping", "url": "https://www.jemix.co.il/tag/shopping/"},
     {"name": "Travel", "url": "https://www.jemix.co.il/tag/travel/"},
     {"name": "Food", "url": "https://www.jemix.co.il/tag/food/"},
-    {"name": "Pets", "url": "https://www.jemix.co.il/tag/pet/"},
+    {"name": "Pet", "url": "https://www.jemix.co.il/tag/pet/"},
     {"name": "Beauty", "url": "https://www.jemix.co.il/tag/beauty/"},
     {"name": "Entertainment", "url": "https://www.jemix.co.il/tag/entertainment/"},
     {"name": "Sport", "url": "https://www.jemix.co.il/tag/sport/"},
