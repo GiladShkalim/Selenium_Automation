@@ -10,7 +10,7 @@ class HomePage(BasePage):
     # Element locators using Elementor-specific classes from the site
     HOME_ELEMENTS = {
         "header": (By.CSS_SELECTOR, ".elementor-location-header"),
-        "nav": (By.CSS_SELECTOR, ".elementor-element-110e30f nav, .elementor-nav-menu--main"),
+        "nav": (By.CSS_SELECTOR, "#menu-1-110e30f > li.menu-item.menu-item-type-post_type.menu-item-object-page.menu-item-10688 > a"),
         "main_content": (By.CSS_SELECTOR, ".elementor-section-wrap, .elementor-element-populated"),
         "footer": (By.CSS_SELECTOR, ".elementor-location-footer")
     }
