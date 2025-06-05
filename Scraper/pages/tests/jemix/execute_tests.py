@@ -1,6 +1,6 @@
 import unittest
 import sys
-from test_utils import ResultFileWriter, SilentTestRunner
+from test_utils import ResultFileWriter
 from Scraper.pages.tests.jemix.HomePage_load import TestHomePageLoad
 from Scraper.pages.tests.jemix.LoginPage_test import TestLogin
 from Scraper.pages.tests.jemix.test_logout import TestLogout
@@ -23,8 +23,12 @@ if __name__ == '__main__':
     for test_case in test_cases:
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(test_case))
     
-    # Run tests silently
-    runner = SilentTestRunner()
+    # Run tests with output
+    # Verbosity levels:
+    # 0 = quiet (dots for success)
+    # 1 = default (dots for success with basic details)
+    # 2 = verbose (detailed test names and results)
+    runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     
     # Write results to file

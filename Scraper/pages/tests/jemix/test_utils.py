@@ -27,11 +27,11 @@ class ResultFileWriter:
                 f.write("-" * 20 + "\n")
                 for failure in test_result.failures:
                     test_case = failure[0]
-                    f.write(f"{test_case.id().split('.')[-1]}: FAIL\n")
+                    f.write(f"{test_case.id()}: FAIL\n")
                     f.write(f"Reason: {failure[1]}\n\n")
                 for error in test_result.errors:
                     test_case = error[0]
-                    f.write(f"{test_case.id().split('.')[-1]}: ERROR\n")
+                    f.write(f"{test_case.id()}: ERROR\n")
                     f.write(f"Reason: {error[1]}\n\n")
             
             # Write successes
@@ -39,7 +39,10 @@ class ResultFileWriter:
                 f.write("\nPassed Tests:\n")
                 f.write("-" * 20 + "\n")
                 for test in test_result.successes:
-                    f.write(f"{test.id().split('.')[-1]}: PASS\n")
+                    test_name = test.id().split('.')[-2:]  # Get class and method name
+                    test_class = test_name[0].replace('Test', '')  # Remove 'Test' prefix
+                    test_method = test_name[1].replace('test_', '')  # Remove 'test_' prefix
+                    f.write(f"{test_class} - {test_method}: PASS\n")
             
             f.write("\n" + "=" * 50 + "\n")
             f.write(f"\nSummary:")
