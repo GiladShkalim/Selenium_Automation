@@ -22,7 +22,7 @@ if __name__ == '__main__':
     
     for test_case in test_cases:
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(test_case))
-    
+    #DO NOT EDIT THE FOLLOWING FUNCTION. IT IS USED TO RUN THE TESTS. DO NOT CHANGE!!!
     # Run tests with output
     # Verbosity levels:
     # 0 = quiet (dots for success)

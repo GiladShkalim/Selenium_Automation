@@ -4,12 +4,19 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
-# Set the directory for the tests
-TEST_DIR="$SCRIPT_DIR/pages/tests/jemix"
+# Set the directories for the tests
+SELENIUM_TEST_DIR="$SCRIPT_DIR/pages/tests/jemix"
+API_TEST_DIR="$SCRIPT_DIR/pages/tests/potter_api"
 VENV_DIR="$SCRIPT_DIR/venv"
 
-# Check for required browser
-if [ -f /etc/debian_version ]; then
+# Check if a parameter was provided
+if [ $# -eq 0 ]; then
+    echo "Error: Please provide a parameter (0 for Selenium tests, 1 for API tests)"
+    exit 1
+fi
+
+# Check for required browser if running Selenium tests
+if [ "$1" = "0" ] && [ -f /etc/debian_version ]; then
     # WSL environment
     if ! command -v chromium-browser &> /dev/null && ! command -v google-chrome &> /dev/null; then
         echo "Error: Neither Chromium nor Google Chrome is installed."
@@ -31,59 +38,36 @@ fi
 # Activate the virtual environment
 source "$VENV_DIR/bin/activate"
 
-# Install required packages
-pip install selenium webdriver-manager colorama
+# Install required packages based on test type
+if [ "$1" = "0" ]; then
+    pip install selenium webdriver-manager colorama
+elif [ "$1" = "1" ]; then
+    pip install requests
+else
+    echo "Error: Invalid parameter. Use 0 for Selenium tests or 1 for API tests."
+    exit 1
+fi
 
-# Create a Python script for test execution
-cat > "$TEST_DIR/execute_tests.py" << 'EOL'
-import unittest
-import sys
-from test_utils import ResultFileWriter, SilentTestRunner
-from Scraper.pages.tests.jemix.HomePage_load import TestHomePageLoad
-from Scraper.pages.tests.jemix.LoginPage_test import TestLogin
-from Scraper.pages.tests.jemix.test_logout import TestLogout
-from Scraper.pages.tests.jemix.test_main_navigation import TestMainNavigation
-from Scraper.pages.tests.jemix.test_category_navigation import TestCategoryNavigation
-
-if __name__ == '__main__':
-    # Create test suite
-    suite = unittest.TestSuite()
-    
-    # Add all test cases
-    test_cases = [
-        TestHomePageLoad,
-        TestLogin,
-        TestLogout,
-        TestMainNavigation,
-        TestCategoryNavigation
-    ]
-    
-    for test_case in test_cases:
-        suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(test_case))
-    
-    # Run tests silently
-    runner = SilentTestRunner()
-    result = runner.run(suite)
-    
-    # Write results to file
-    writer = ResultFileWriter()
-    writer.write_results(result)
-    
-    # Exit with appropriate code
-    sys.exit(not result.wasSuccessful())
-EOL
-
-# Create __init__.py files if they don't exist
+# Create necessary directories and __init__.py files
 mkdir -p "$PROJECT_ROOT/Scraper/pages/tests/jemix"
+mkdir -p "$PROJECT_ROOT/Scraper/pages/tests/potter_api"
 touch "$PROJECT_ROOT/Scraper/__init__.py"
 touch "$PROJECT_ROOT/Scraper/pages/__init__.py"
 touch "$PROJECT_ROOT/Scraper/pages/tests/__init__.py"
 touch "$PROJECT_ROOT/Scraper/pages/tests/jemix/__init__.py"
+touch "$PROJECT_ROOT/Scraper/pages/tests/potter_api/__init__.py"
 
-# Run the tests
+# Run tests based on parameter
 cd "$PROJECT_ROOT"
 echo "Running tests..."
-python3 "$TEST_DIR/execute_tests.py"
+
+if [ "$1" = "0" ]; then
+    # Run Selenium tests
+    python3 "$SELENIUM_TEST_DIR/execute_tests.py"
+elif [ "$1" = "1" ]; then
+    # Run API tests
+    python3 "$API_TEST_DIR/execute_tests.py"
+fi
 
 # Store the test result
 TEST_RESULT=$?
