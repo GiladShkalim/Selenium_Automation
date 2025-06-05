@@ -20,7 +20,7 @@ if [ -f /etc/debian_version ]; then
 fi
 
 # Set PYTHONPATH to include the project root
-export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
+export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}"
 
 # Create and activate a virtual environment if it doesn't exist
 if [ ! -d "$VENV_DIR" ]; then
@@ -34,14 +34,56 @@ source "$VENV_DIR/bin/activate"
 # Install required packages
 pip install selenium webdriver-manager colorama
 
-# Run the test module directly with increased verbosity
+# Create a Python script for test execution
+cat > "$TEST_DIR/execute_tests.py" << 'EOL'
+import unittest
+import sys
+from test_utils import ResultFileWriter, SilentTestRunner
+from Scraper.pages.tests.jemix.HomePage_load import TestHomePageLoad
+from Scraper.pages.tests.jemix.LoginPage_test import TestLogin
+from Scraper.pages.tests.jemix.test_logout import TestLogout
+from Scraper.pages.tests.jemix.test_main_navigation import TestMainNavigation
+from Scraper.pages.tests.jemix.test_category_navigation import TestCategoryNavigation
+
+if __name__ == '__main__':
+    # Create test suite
+    suite = unittest.TestSuite()
+    
+    # Add all test cases
+    test_cases = [
+        TestHomePageLoad,
+        TestLogin,
+        TestLogout,
+        TestMainNavigation,
+        TestCategoryNavigation
+    ]
+    
+    for test_case in test_cases:
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(test_case))
+    
+    # Run tests silently
+    runner = SilentTestRunner()
+    result = runner.run(suite)
+    
+    # Write results to file
+    writer = ResultFileWriter()
+    writer.write_results(result)
+    
+    # Exit with appropriate code
+    sys.exit(not result.wasSuccessful())
+EOL
+
+# Create __init__.py files if they don't exist
+mkdir -p "$PROJECT_ROOT/Scraper/pages/tests/jemix"
+touch "$PROJECT_ROOT/Scraper/__init__.py"
+touch "$PROJECT_ROOT/Scraper/pages/__init__.py"
+touch "$PROJECT_ROOT/Scraper/pages/tests/__init__.py"
+touch "$PROJECT_ROOT/Scraper/pages/tests/jemix/__init__.py"
+
+# Run the tests
 cd "$PROJECT_ROOT"
-echo "Running tests from directory: $PWD"
-#python3 -m unittest Scraper.pages.tests.jemix.HomePage_load -v
-#python3 -m unittest Scraper.pages.tests.jemix.LoginPage_test -v
-#python3 -m unittest Scraper.pages.tests.jemix.test_logout -v
-#python3 -m unittest Scraper.pages.tests.jemix.test_main_navigation -v
-python3 -m unittest Scraper.pages.tests.jemix.test_category_navigation -v
+echo "Running tests..."
+python3 "$TEST_DIR/execute_tests.py"
 
 # Store the test result
 TEST_RESULT=$?
