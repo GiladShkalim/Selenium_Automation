@@ -1,74 +1,153 @@
-# Intelli-Shop
+# Intelli-Shop 🛍️
 
-A web scraping solution for aggregating and managing coupon data from multiple providers. 
-Built with scalability and modularity in mind.
+[![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://www.python.org/)
+[![Selenium](https://img.shields.io/badge/Selenium-Latest-green.svg)](https://www.selenium.dev/)
+[![POM](https://img.shields.io/badge/Design-PageObjectModel-orange.svg)](https://www.selenium.dev/documentation/test_practices/encouraged/page_object_models/)
 
-## 🚀 Features
+A comprehensive testing and web automation suite that combines intelligent web scraping for coupon aggregation and robust API testing capabilities. Built with scalability, modularity, and industry best practices in mind.
 
-- **Modular Architecture**: Easy to extend and add new coupon providers
-- **Scalable Design**: Built to handle increasing numbers of sources and data volume
-- **Provider-Specific Handlers**: Custom handlers for each coupon provider's unique structure
-- **Data Validation**: Ensures consistency and reliability of collected coupon data
+## 🌟 Key Features
 
-## 🛠️ Technology Stack
+- **Dual-Purpose Architecture**
+  - Web Scraping Engine for coupon data aggregation
+  - API Testing Framework for endpoint validation
+- **Modern Design Patterns**
+  - Page Object Model (POM) implementation
+  - Modular and extensible architecture
+  - Provider-specific handlers
+- **Comprehensive Testing**
+  - Automated API endpoint validation
+  - Schema and data consistency checks
+  - Detailed test reporting
+- **Enterprise-Grade Infrastructure**
+  - Scalable design for high-volume data processing
+  - Isolated development environments
+  - Automated setup and configuration
 
-- **Python**: Core programming language
-- **Selenium**: Web automation and data extraction
-- **Object-Oriented Design**: Modular and maintainable code structure
-- **Virtual Environment**: Isolated development environment
+## 📚 Project Components
 
-## 📁 Project Structure
+The project consists of two main components:
+
+### 1. Web Scraping Engine
+- Automated coupon data collection
+- Multiple provider support
+- Custom handler implementation
+- [Learn more about the Scraper](./Scraper/README.md)
+
+### 2. API Testing Framework
+- Comprehensive endpoint validation
+- Data consistency verification
+- Automated test reporting
+- [View detailed test cases](./TEST_CASES.md)
+
+## 🗂️ Project Structure
 
 ```
 Intelli-Shop/
 ├── Scraper/
 │   ├── pages/
-│   │   ├── base/         # Base classes and common functionality
-│   │   ├── jemix/        # Jemix provider implementation
-│   ├── config/           # Configuration settings
-│   ├── Selenium_Test.sh  # Development environment setup script
-│   └── venv/            # Virtual environment
+│   │   ├── base/          # Base classes and common functionality
+│   │   ├── jemix/         # Jemix provider implementation
+│   ├── config/            # Configuration settings
+│   └── Selenium_Test.sh   # Environment setup script
+├── potter_api/
+│   ├── api_get.py         # Books API test implementation
+│   ├── api_houses.py      # Houses API test implementation
+│   ├── api_modules.py     # Shared configurations
+│   ├── execute_tests.py   # Test orchestrator
+│   └── test_utils.py      # Testing utilities
+└── test_results/          # Generated test reports
 ```
 
-## 🚦 Getting Started
+## 🚀 Quick Start Guide
 
-1. **Set Up Development Environment**
-   ```bash
-   cd Scraper
-   # For Unix/Linux/WSL users:
-   ./Selenium_Test.sh    # Sets up required dependencies and environment
-   
-   # For Windows users:
-   python -m venv venv
-   venv\Scripts\activate
-   pip install selenium webdriver-manager
-   ```
+### Prerequisites
+- Python 3.x
+- Unix-like environment (WSL for Windows users)
+- Chrome/Firefox browser installed
 
-2. **Configure Settings**
-   - Update `config/settings.py` with your preferred configuration
-   - Set up provider-specific parameters if needed
+### 1. Environment Setup
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/Intelli-Shop.git
+cd Intelli-Shop
 
-## 🔧 Usage
-
-The project is structured to handle different coupon providers through dedicated modules:
-
-```python
-from Scraper.pages.jemix.HomePage import HomePage
-# Initialize and use the scraper for specific providers
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Unix/Linux/WSL
+# OR
+venv\Scripts\activate     # Windows
 ```
 
-## 🌱 Adding New Providers
+### 2. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
 
-1. Create a new directory under `pages/` for the provider
-2. Implement provider-specific classes extending the base functionality
-3. Add configuration in `config/settings.py`
+### 3. Configure Settings
+- Update `Scraper/config/settings.py` with your preferences
+- Configure API endpoints in `potter_api/api_modules.py`
 
-## 💻 Development
+### 4. Run Tests
+```bash
+# Run web scraping tests
+cd Scraper
+./Selenium_Test.sh
 
-The project includes development scripts to ensure proper setup:
+# Run API tests
+cd ../potter_api
+python execute_tests.py
+```
 
-- `Selenium_Test.sh`: Automates environment setup and dependency management
-  - Creates isolated virtual environment
-  - Installs required packages
-  - Sets up necessary browser configurations
-  - Ensures consistent development environment across team members
+## 🧪 Testing Framework
+
+### API Testing Capabilities
+- **Endpoint Coverage**:
+  - Books API (`/books`)
+  - Houses API (`/houses`)
+- **Validation Types**:
+  - Schema validation
+  - Data consistency
+  - Pagination handling
+  - Error scenarios
+  - Response headers
+
+### Web Scraping Tests
+- **Provider Coverage**:
+  - Jemix implementation
+  - Extensible for additional providers
+- **Validation Areas**:
+  - Data extraction accuracy
+  - Error handling
+  - Performance metrics
+
+## 📊 Test Results
+
+Test execution generates detailed reports:
+- `API-Test-Result.txt`: API test outcomes
+- `Scraper-Test-Result.txt`: Web scraping results
+
+Reports include:
+- Test case status (Pass/Fail)
+- Detailed error messages
+- Execution statistics
+- Performance metrics
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Additional Resources
+
+- [Detailed Test Cases](./TEST_CASES.md)
+- [API Documentation](./Scraper/API_README.md)
+- [Selenium Documentation](https://www.selenium.dev/documentation/)
+- [Python Best Practices](https://docs.python-guide.org/)
