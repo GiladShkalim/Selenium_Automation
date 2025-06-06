@@ -1,4 +1,4 @@
-# Intelli-Shop 🛍️
+# Selenium_Automation 🛍️
 
 [![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://www.python.org/)
 [![Selenium](https://img.shields.io/badge/Selenium-Latest-green.svg)](https://www.selenium.dev/)
@@ -43,7 +43,6 @@ The project consists of two main components:
 ## 🗂️ Project Structure
 
 ```
-Intelli-Shop/
 ├── Scraper/
 │   ├── pages/
 │   │   ├── base/          # Base classes and common functionality
